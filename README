@@ -1,19 +1,26 @@
->> GXAudioVisualisation <<
+GXAudioVisualisation
 
-current version - 0.31 (16.08.2013)
+#### 11.02.2014 - 0.5v ####
 
-Blender Python script for audio visualisation
-pre beta-alpha version, your computer may explode.
+- added 2 vis-modes - cube_scale and center_cube_scale
+- added "debug mode" - additional emptys with frequency in names
+- added PANEL!!!! sadfsjfhasfgdsagfagsfjhsfjas
 
-CHANGELOG:
-# update comments and informations
-# a little clearifications in code
-# add choosing channels to generate visualisation (stereo variable)
-# no one bug has been fixed, because all of my code is one big crap
+NOTES: script still must be run in text editor, no addon-mode yet, agrh (api change, bpy.context restrictions 
+safsfsfa)
+I was fighting with it so long… I lose my coding power (my coding power never exist).
 
 TODO:
-# repair low frequnecy range variable (low)
-# add scaling bar mode and transform bar mode of visualisation (currently only array mode)
-# gui!
-# ??
-# profit!
+- Create GitWiki
+- MAKE SCRIPT AS ADDON!
+
+faaaaaaar future:
+- make script as dynamic, change variables refreshing 3d_view
+- cycles/internal material create (with fancy options \o/)
+- more visualisation options! MORE MORE MORE, still far future.
+
+Do you want me to help motivate me? Or you want to thank me for this piece of s***cript?
+You can send some paypal donation to gethiox@gmail.com, or just send e-mail, that's great too.
+
+
+
