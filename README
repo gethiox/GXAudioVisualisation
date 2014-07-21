@@ -1,4 +1,10 @@
-GXAudioVisualisation
+GXAudioVisualisation (GxAV) - Generate Audio Visualization in Blender!
+
+#### 21.07.2014 - 1.0v ####
+- initial version of new, re-writed script (very basic features)
+- now script can be loaded as addon (acces by properties_window>scene)
+- dynamicly changing variables and immediately see results
+- script need more features and many optimizations (coming soon)
 
 #### 11.02.2014 - 0.5v ####
 
@@ -21,6 +27,3 @@ faaaaaaar future:
 
 Do you want me to help motivate me? Or you want to thank me for this piece of s***cript?
 You can send some paypal donation to gethiox@gmail.com, or just send e-mail, that's great too.
-
-
-
