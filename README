@@ -1,6 +1,6 @@
 GXAudioVisualisation (GxAV) - Generate Audio Visualization in Blender!
 
-#### 21.07.2014 - 0.91v beta ####
+#### 22.07.2014 - 0.91v beta ####
 - reorganized panel
 - added Logarithm bake mode (and choose list in panel)
 - min/max freq works well
