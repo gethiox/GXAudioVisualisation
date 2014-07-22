@@ -1,15 +1,48 @@
+"""
+GXAudioVisualisation - Blender Music Visualizer
+Copyright (C) 2013 Sławomir Kur (Gethiox)
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see http://www.gnu.org/licenses/
+"""
+
 bl_info = {
-    "name": "My Test Addon",
-    "category": "Object"
-}
+    "name": "GxAV",
+    "author": "Sławomir Kur (Gethiox)",
+    "version": (0, 91),
+    "blender": (2, 7, 1),
+    "location": "Properties > Scene",
+    "description": "Bake Spectrum Visualizer by sound file",
+    "warning": "Still beta, a little bit buggy, stay tuned :v",
+    "category": "Animation",
+    "wiki_url": "https://github.com/gethiox/GXAudioVisualisation/wiki",
+    "tracker_url": "https://github.com/gethiox/GXAudioVisualisation/issues"}
+
+
 
 import bpy
+import math
   
 
 def initprop():
+    bpy.types.Scene.gx_mode = bpy.props.EnumProperty(
+        items = [('0', 'Logarithm', 'log'),
+                 ('1', 'Linear', 'linear')],
+        name = "Frequency Mode")  
+    
     bpy.types.Scene.gx_min_freq = bpy.props.FloatProperty(
         name = "Min Freq",
-        default = 0.0,
+        default = 100.0,
         min = 0, 
         step = 1000,
         precision = 2,
@@ -118,8 +151,9 @@ def initpropvalues():
     bpy.context.scene['gx_scale_z'] = 0.4
     bpy.context.scene['gx_start'] = 100
     bpy.context.scene['gx_space_array'] = 1.5
-    bpy.context.scene['gx_min_freq'] = 0.0
-    bpy.context.scene['gx_max_freq'] = 20000.0        
+    bpy.context.scene['gx_min_freq'] = 100.0
+    bpy.context.scene['gx_max_freq'] = 20000.0  
+    bpy.context.scene['gx_mode'] = 0
         
 
 class LayoutDemoPanel(bpy.types.Panel):
@@ -137,38 +171,46 @@ class LayoutDemoPanel(bpy.types.Panel):
         # Big render button
         # layout.label(text="Big Button:")
         row = layout.row()
-        row.operator("object.gx_create_base", icon="MODIFIER", text="Create Visualizer Base")
+        row.operator("object.gx_init_variables", icon="COLOR", text="Init/Reset Variables")  
         row = layout.row()
-        row.operator("object.gx_bake", icon="RADIO", text="(re)bake animation data")
+        row.operator("object.gx_create_base", icon="MODIFIER", text="Create Visualizer Base")
 
-        # Create a simple row.
         layout.label(text="Parameters:")
         row = layout.row()
+        row.prop(scene, "gx_count_x")        
         row.prop(scene, "gx_space_x")
-        row.prop(scene, "gx_count_x")
         row = layout.row()
-        row.prop(scene, "gx_space_array")     
-        row = layout.row()        
-        row.prop(scene, "gx_min_freq")                       
-        row.prop(scene, "gx_max_freq")      
-                
-        row = layout.row()
-        row.prop(scene, "gx_center_space")
-        row.prop(scene, "gx_start")
-        row = layout.row()
-        #layout.template_curve_mapping(scene, "gx_curve")
-        
-        box = layout.box()
-        box.label("Channels to bake and audio files path:")
-        box.prop(scene, "gx_channels")
-        box.prop(scene, "gx_left_file")
-        box.prop(scene, "gx_right_file")        
-        
+        row.prop(scene, "gx_center_space") 
+
         row = layout.row(align=True)
         row.label(text="Object Scale:")
         row.prop(scene, 'gx_scale_x')
         row.prop(scene, 'gx_scale_y')
-        row.prop(scene, 'gx_scale_z')        
+        row.prop(scene, 'gx_scale_z')                
+        
+        layout.label(text="VisMode Parameters:")
+        row = layout.row()
+        row.prop(scene, "gx_space_array")            
+
+        layout.label(text="Bake Parameters:")
+        box = layout.box()
+        box.label("Channels to bake and audio files path:")
+        box.prop(scene, "gx_channels")
+        box.prop(scene, "gx_left_file")
+        box.prop(scene, "gx_right_file")     
+        row = layout.row()    
+        row.prop(scene, "gx_mode")
+        row = layout.row()  
+        row.prop(scene, "gx_start")
+        row = layout.row()        
+        row.prop(scene, "gx_min_freq")                       
+        row.prop(scene, "gx_max_freq")        
+        row = layout.row()
+        row.operator("object.gx_bake", icon="RADIO", text="(re)Bake animation data")     
+          
+           
+        
+
 
 def gxstart():
     bpy.ops.object.select_all(action="DESELECT")
@@ -248,11 +290,17 @@ def gxbake():
         
     print("debug mode kurwa: " + str(bpy.context.scene['gx_count_x'])) 
     
-    c = bpy.context.scene['gx_max_freq']/bpy.context.scene['gx_count_x']
+    
+    c = (bpy.context.scene['gx_max_freq']-bpy.context.scene['gx_min_freq'])/bpy.context.scene['gx_count_x']
         
     for i in range(bpy.context.scene['gx_count_x']):
-        b = bpy.context.scene['gx_max_freq']-c*(bpy.context.scene['gx_count_x']-i-1)
-        a = bpy.context.scene['gx_max_freq']-c*(bpy.context.scene['gx_count_x']-i)
+        if bpy.context.scene['gx_mode'] == 1:
+            b = ((bpy.context.scene['gx_max_freq']-bpy.context.scene['gx_min_freq'])-c*(bpy.context.scene['gx_count_x']-i-1)) + bpy.context.scene['gx_min_freq']
+            a = ((bpy.context.scene['gx_max_freq']-bpy.context.scene['gx_min_freq'])-c*(bpy.context.scene['gx_count_x']-i)) + bpy.context.scene['gx_min_freq']
+        elif bpy.context.scene['gx_mode'] == 0:
+            b = ((1 - math.log(bpy.context.scene['gx_count_x']-i, bpy.context.scene['gx_count_x']+1)) * (bpy.context.scene['gx_max_freq']-bpy.context.scene['gx_min_freq'])) + bpy.context.scene['gx_min_freq']
+            a = ((1 - math.log(bpy.context.scene['gx_count_x']-i+1, bpy.context.scene['gx_count_x']+1)) * (bpy.context.scene['gx_max_freq']-bpy.context.scene['gx_min_freq'])) + bpy.context.scene['gx_min_freq']
+        print(str(i) + ": " + str(a) + " - " + str(b))
         if bpy.context.scene['gx_channels'] == 1 or bpy.context.scene['gx_channels'] == 0:
             bpy.context.scene.frame_current = bpy.context.scene['gx_start']
             bpy.ops.object.add(location=(-(i*bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space']/2), 0, -2))
@@ -275,6 +323,16 @@ def gxbake():
             bpy.context.area.type = 'PROPERTIES'
 
     bpy.types.Scene.bakedobjects = bpy.context.scene['gx_count_x']    
+
+class GxInitVariables(bpy.types.Operator):
+ 
+    bl_idname = "object.gx_init_variables"
+    bl_label = "GxInitVariables"
+    bl_options = {'REGISTER', 'UNDO'}
+    
+    def execute(self, context):
+        initpropvalues()
+        return {'FINISHED'}
     
 class GxCreateBase(bpy.types.Operator):
  
@@ -283,7 +341,6 @@ class GxCreateBase(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
     
     def execute(self, context):
-        initpropvalues()
         gxstart()
         return {'FINISHED'}
     
@@ -537,14 +594,17 @@ def update_count(self, context):
         
 def register():
     bpy.utils.register_class(GxCreateBase)
+    bpy.utils.register_class(GxInitVariables)
     bpy.utils.register_class(GxBake)    
     bpy.utils.register_class(LayoutDemoPanel)
     initprop()
 def unregister():
     bpy.utils.unregister_class(GxCreateBase)
+    bpy.utils.unregister_class(GxInitVariables)
     bpy.utils.unregister_class(GxBake)    
     bpy.utils.unregister_class(LayoutDemoPanel)
 
 if __name__ == "__main__":
     register()
+
 
