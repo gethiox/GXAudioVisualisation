@@ -19,7 +19,7 @@ along with this program.  If not, see http://www.gnu.org/licenses/
 bl_info = {
     "name": "GxAV",
     "author": "Sławomir Kur (Gethiox)",
-    "version": (0, 91),
+    "version": (0, 92),
     "blender": (2, 7, 1),
     "location": "Properties > Scene",
     "description": "Bake Spectrum Visualizer by sound file",
@@ -35,9 +35,19 @@ import math
   
 
 def initprop():
+    bpy.types.Scene.gx_driver_power = bpy.props.FloatProperty(
+        name = "Driver Power",
+        default = 20.0,
+        min = 0, 
+        step = 1,
+        precision = 2,
+        description = "Enter an float",
+        update=update_drivers3)     
+    
     bpy.types.Scene.gx_mode = bpy.props.EnumProperty(
         items = [('0', 'Logarithm', 'log'),
-                 ('1', 'Linear', 'linear')],
+                 ('1', 'Linear', 'linear'),
+                 ('2', 'TERCJA', 'tercja')],
         name = "Frequency Mode")  
     
     bpy.types.Scene.gx_min_freq = bpy.props.FloatProperty(
@@ -143,7 +153,7 @@ def initprop():
     
 def initpropvalues():
     bpy.context.scene['gx_space_x'] = 2.0
-    bpy.context.scene['gx_count_x'] = 5
+    bpy.context.scene['gx_count_x'] = 32
     bpy.context.scene['gx_center_space'] = 2.0
     bpy.context.scene['gx_channels'] = 2
     bpy.context.scene['gx_scale_x'] = 0.7
@@ -151,9 +161,10 @@ def initpropvalues():
     bpy.context.scene['gx_scale_z'] = 0.4
     bpy.context.scene['gx_start'] = 100
     bpy.context.scene['gx_space_array'] = 1.5
-    bpy.context.scene['gx_min_freq'] = 100.0
+    bpy.context.scene['gx_min_freq'] = 10.0
     bpy.context.scene['gx_max_freq'] = 20000.0  
-    bpy.context.scene['gx_mode'] = 0
+    bpy.context.scene['gx_mode'] = 2
+    bpy.context.scene['gx_driver_power'] = 20.0
         
 
 class LayoutDemoPanel(bpy.types.Panel):
@@ -190,7 +201,8 @@ class LayoutDemoPanel(bpy.types.Panel):
         
         layout.label(text="VisMode Parameters:")
         row = layout.row()
-        row.prop(scene, "gx_space_array")            
+        row.prop(scene, "gx_space_array")      
+        row.prop(scene, "gx_driver_power")        
 
         layout.label(text="Bake Parameters:")
         box = layout.box()
@@ -292,9 +304,12 @@ def gxbake():
     
     
     c = (bpy.context.scene['gx_max_freq']-bpy.context.scene['gx_min_freq'])/bpy.context.scene['gx_count_x']
-        
+    b = 10    
     for i in range(bpy.context.scene['gx_count_x']):
-        if bpy.context.scene['gx_mode'] == 1:
+        if bpy.context.scene['gx_mode'] == 2:
+            a=pow(2, (1/3))*b
+            b=a
+        elif bpy.context.scene['gx_mode'] == 1:
             b = ((bpy.context.scene['gx_max_freq']-bpy.context.scene['gx_min_freq'])-c*(bpy.context.scene['gx_count_x']-i-1)) + bpy.context.scene['gx_min_freq']
             a = ((bpy.context.scene['gx_max_freq']-bpy.context.scene['gx_min_freq'])-c*(bpy.context.scene['gx_count_x']-i)) + bpy.context.scene['gx_min_freq']
         elif bpy.context.scene['gx_mode'] == 0:
@@ -366,7 +381,6 @@ def update_space_array(self, context):
             name = "bar_r_" + str(i+1)
             bpy.data.objects[name].modifiers['Array'].relative_offset_displace[2] = bpy.context.scene['gx_space_array']
 
-
 def update_drivers():
     try:
         bpy.types.Scene.bakedobjects
@@ -390,7 +404,7 @@ def update_drivers():
                 targ.bone_target = 'Driver'
                 fmod = mdf.modifiers[0]
                 fmod.poly_order = 1
-                fmod.coefficients = (0.0, 40.0)
+                fmod.coefficients = (0.0, bpy.context.scene['gx_driver_power'])
            
                 #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.type = 'AVERAGE'
                 #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.variables.new().name = 'name'
@@ -418,7 +432,70 @@ def update_drivers():
                 targ.bone_target = 'Driver'
                 fmod = mdf.modifiers[0]
                 fmod.poly_order = 1
-                fmod.coefficients = (0.0, 40.0)
+                fmod.coefficients = (0.0, bpy.context.scene['gx_driver_power'])
+           
+                #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.type = 'AVERAGE'
+                #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.variables.new().name = 'name'
+                #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.variables.new().type = 'TRANSFORMS'
+                #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.variables.new().targets[0].id = bpy.data.objects[name2]
+                #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.variables.new().targets[0].transform_type = 'SCALE_Z'
+                #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.variables.new().targets[0].bone_target = 'Driver'
+        
+    except:
+        print("no drivers connections to update") 
+
+def update_drivers3(self, context):
+    try:
+        bpy.types.Scene.bakedobjects
+        for i in range(bpy.types.Scene.bakedobjects):
+            if bpy.context.scene['gx_channels'] == 1 or bpy.context.scene['gx_channels'] == 0:         
+                name = "bar_l_" + str(i+1)
+                name2 = "obj_l_" + str(i+1)
+                
+                bpy.data.objects[name].modifiers['Array'].driver_remove('count')
+                 
+                obj = bpy.data.objects[name] #def drivering
+                mdf = obj.modifiers['Array'].driver_add('count')
+                drv = mdf.driver
+                drv.type = 'AVERAGE'
+                var = drv.variables.new()
+                var.name = 'name'
+                var.type = 'TRANSFORMS'
+                targ = var.targets[0]
+                targ.id = bpy.data.objects[name2]
+                targ.transform_type = 'SCALE_Z'
+                targ.bone_target = 'Driver'
+                fmod = mdf.modifiers[0]
+                fmod.poly_order = 1
+                fmod.coefficients = (0.0, bpy.context.scene['gx_driver_power'])
+           
+                #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.type = 'AVERAGE'
+                #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.variables.new().name = 'name'
+                #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.variables.new().type = 'TRANSFORMS'
+                #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.variables.new().targets[0].id = bpy.data.objects[name2]
+                #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.variables.new().targets[0].transform_type = 'SCALE_Z'
+                #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.variables.new().targets[0].bone_target = 'Driver'
+
+            if bpy.context.scene['gx_channels'] == 2 or bpy.context.scene['gx_channels'] == 0:            
+                name = "bar_r_" + str(i+1)     
+                name2 = "obj_r_" + str(i+1)  
+                
+                bpy.data.objects[name].modifiers['Array'].driver_remove('count')    
+                                  
+                obj = bpy.data.objects[name] #def drivering
+                mdf = obj.modifiers['Array'].driver_add('count')
+                drv = mdf.driver
+                drv.type = 'AVERAGE'
+                var = drv.variables.new()
+                var.name = 'name'
+                var.type = 'TRANSFORMS'
+                targ = var.targets[0]
+                targ.id = bpy.data.objects[name2]
+                targ.transform_type = 'SCALE_Z'
+                targ.bone_target = 'Driver'
+                fmod = mdf.modifiers[0]
+                fmod.poly_order = 1
+                fmod.coefficients = (0.0, bpy.context.scene['gx_driver_power'])
            
                 #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.type = 'AVERAGE'
                 #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.variables.new().name = 'name'
@@ -453,7 +530,7 @@ def update_drivers2():
                 targ.bone_target = 'Driver'
                 fmod = mdf.modifiers[0]
                 fmod.poly_order = 1
-                fmod.coefficients = (0.0, 20.0)
+                fmod.coefficients = (0.0, bpy.context.scene['gx_driver_power'])
            
                 #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.type = 'AVERAGE'
                 #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.variables.new().name = 'name'
@@ -481,7 +558,7 @@ def update_drivers2():
                 targ.bone_target = 'Driver'
                 fmod = mdf.modifiers[0]
                 fmod.poly_order = 1
-                fmod.coefficients = (0.0, 20.0)
+                fmod.coefficients = (0.0, bpy.context.scene['gx_driver_power'])
            
                 #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.type = 'AVERAGE'
                 #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.variables.new().name = 'name'
@@ -606,5 +683,7 @@ def unregister():
 
 if __name__ == "__main__":
     register()
+
+
 
 
