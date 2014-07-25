@@ -19,26 +19,57 @@ along with this program.  If not, see http://www.gnu.org/licenses/
 bl_info = {
     "name": "GxAV",
     "author": "Sławomir Kur (Gethiox)",
-    "version": (0, 93),
+    "version": (0, 99),
     "blender": (2, 7, 1),
     "location": "Properties > Scene",
     "description": "Bake Spectrum Visualizer by sound file",
-    "warning": "Still beta, a little bit buggy, stay tuned :v",
+    "warning": "Stable version is so close!",
     "category": "Animation",
     "wiki_url": "https://github.com/gethiox/GXAudioVisualisation/wiki",
     "tracker_url": "https://github.com/gethiox/GXAudioVisualisation/issues"}
 
-
-
 import bpy
 import math
   
-
 def initprop():
+    bpy.types.Scene.gx_cube_scale_x = bpy.props.FloatProperty(
+        name = "Scale X",
+        default = 1.0,
+        min = 0, 
+        step = 1,
+        precision = 2,
+        description = "Enter an float",
+        update=update_scale)    
+
+    bpy.types.Scene.gx_cube_scale_y = bpy.props.FloatProperty(
+        name = "Scale Y",
+        default = 1.0,
+        min = 0, 
+        step = 1,
+        precision = 2,
+        description = "Enter an float",
+        update=update_scale)   
+
+    bpy.types.Scene.gx_cube_scale_z = bpy.props.FloatProperty(
+        name = "Scale Z",
+        default = 1.0,
+        min = 0, 
+        step = 1,
+        precision = 2,
+        description = "Enter an float",
+        update=update_scale)       
+
+    bpy.types.Scene.gx_type = bpy.props.EnumProperty(
+        items = [('0', 'Array', 'array'),
+                 ('1', 'Object scaling', 'object'),
+                 ('2', 'Center object scaling', 'center_object')],
+        name = "Visualisation Type",
+        update=update_channels)      
+
     bpy.types.Scene.gx_freq_debug = bpy.props.BoolProperty(
         name = "Freq Debug",
         description = "Enter an bool lul")
-    
+
     bpy.types.Scene.gx_driver_power = bpy.props.FloatProperty(
         name = "Driver Power",
         default = 20.0,
@@ -97,7 +128,6 @@ def initprop():
         description = "Define path of the right channel file",
         subtype = 'FILE_PATH')    
 
-    
     bpy.types.Scene.gx_scale_x = bpy.props.FloatProperty(
         name = "Scale X",
         default = 0.7,
@@ -170,10 +200,13 @@ def initpropvalues():
     bpy.context.scene['gx_mode'] = 2
     bpy.context.scene['gx_driver_power'] = 20.0
     bpy.context.scene['gx_freq_debug'] = False
+    bpy.context.scene['gx_type'] = 0    
+    bpy.context.scene['gx_cube_scale_x'] = 1.0
+    bpy.context.scene['gx_cube_scale_y'] = 1.0
+    bpy.context.scene['gx_cube_scale_z'] = 1.0
     
     bpy.context.scene['gx_init'] = 1
         
-
 class LayoutDemoPanel(bpy.types.Panel):
     """Creates a Panel in the scene context of the properties editor"""
     bl_label = "GXAudioVisualisation"
@@ -181,55 +214,69 @@ class LayoutDemoPanel(bpy.types.Panel):
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
     bl_context = "scene"
-    
+
     def draw(self, context):
         layout = self.layout
         scene = context.scene
-
-        # Big render button
-        # layout.label(text="Big Button:")
-
         row = layout.row()
-        row.operator("object.gx_create_base", icon="MODIFIER", text="Create Visualizer Base")
+        row.operator("object.gx_create_base", icon="MODIFIER", text="(re)Create Visualizer Base")
+        try:
+            if bpy.context.scene['gx_init'] == 1:
+                layout.label(text="Parameters:")
+                row = layout.row()
+                row.prop(scene, "gx_count_x")        
+                row.prop(scene, "gx_space_x")
+                row = layout.row()
+                row.prop(scene, "gx_center_space") 
 
-        layout.label(text="Parameters:")
-        row = layout.row()
-        row.prop(scene, "gx_count_x")        
-        row.prop(scene, "gx_space_x")
-        row = layout.row()
-        row.prop(scene, "gx_center_space") 
-
-        row = layout.row(align=True)
-        row.label(text="Object Scale:")
-        row.prop(scene, 'gx_scale_x')
-        row.prop(scene, 'gx_scale_y')
-        row.prop(scene, 'gx_scale_z')                
+                row = layout.row()
+                row.prop(scene, "gx_type") 
+                try:
+                    if bpy.context.scene['gx_type'] == 0:
+                        row = layout.row(align=True)
+                        row.label(text="Object Scale:")
+                        row.prop(scene, 'gx_scale_x')
+                        row.prop(scene, 'gx_scale_y')
+                        row.prop(scene, 'gx_scale_z')
+                        row = layout.row()
+                        row.prop(scene, "gx_space_array")
+                    else:
+                        row = layout.row(align=True)
+                        row.label(text="Object Scale:")
+                        row.prop(scene, 'gx_cube_scale_x')
+                        row.prop(scene, 'gx_cube_scale_y')
+                        row.prop(scene, 'gx_cube_scale_z')                        
+                except:
+                    layout.label(text="Missing variables, please report bug")
+                layout.label(text="VisMode Parameters:")
+                row = layout.row()
+                
+                row.prop(scene, "gx_driver_power")        
         
-        layout.label(text="VisMode Parameters:")
-        row = layout.row()
-        row.prop(scene, "gx_space_array")      
-        row.prop(scene, "gx_driver_power")        
-
-        layout.label(text="Bake Parameters:")
-        box = layout.box()
-        box.label("Channels to bake and audio files path:")
-        box.prop(scene, "gx_channels")
-        box.prop(scene, "gx_left_file")
-        box.prop(scene, "gx_right_file")     
-        row = layout.row()    
-        row.prop(scene, "gx_mode")
-        row = layout.row()  
-        row.prop(scene, "gx_start")
-        row = layout.row()        
-        row.prop(scene, "gx_min_freq")                       
-        row.prop(scene, "gx_max_freq")      
-        row = layout.row()
-        row.prop(scene, "gx_freq_debug")  
-        row = layout.row()
-        row.operator("object.gx_bake", icon="RADIO", text="(re)Bake animation data")     
-        row = layout.row()
-        row.operator("object.gx_init_variables", icon="COLOR", text="Init/Reset Variables")          
-          
+                layout.label(text="Bake Parameters:")
+                box = layout.box()
+                box.label("Channels to bake and audio files path:")
+                box.prop(scene, "gx_channels")
+                box.prop(scene, "gx_left_file")
+                box.prop(scene, "gx_right_file")     
+                row = layout.row()    
+                row.prop(scene, "gx_mode")
+                if bpy.context.scene['gx_mode'] == 2:
+                    row = layout.row()
+                    row.label(text="TERCJA is Beta! You need to set 'Count X' to 32 or 33 for best results", icon='ERROR')
+                row = layout.row()  
+                row.prop(scene, "gx_start")
+                row = layout.row()        
+                row.prop(scene, "gx_min_freq")                       
+                row.prop(scene, "gx_max_freq")      
+                row = layout.row()
+                row.prop(scene, "gx_freq_debug")  
+                row = layout.row()
+                row.operator("object.gx_bake", icon="RADIO", text="(re)Bake animation data")     
+                row = layout.row()
+                row.operator("object.gx_init_variables", icon="COLOR", text="Init/Reset Variables")          
+        except:
+            True  
            
         
 
@@ -257,29 +304,7 @@ def gxstart():
         print("Left channel not exist, skip deleting")
         
     for i in range(bpy.context.scene['gx_count_x']):
-        if bpy.context.scene['gx_channels'] == 1 or bpy.context.scene['gx_channels'] == 0:
-            bpy.ops.mesh.primitive_cube_add(location=(-(i*bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space']/2), 0, 0))
-            bpy.context.active_object.scale = (bpy.context.scene['gx_scale_x'], bpy.context.scene['gx_scale_y'], bpy.context.scene['gx_scale_z'])
-
-            name = "bar_l_" + str(i+1)            
-            bpy.context.active_object.name = name
-            
-            bpy.ops.object.modifier_add(type='ARRAY')
-            bpy.context.active_object.modifiers['Array'].count = 10                 
-            bpy.context.active_object.modifiers['Array'].relative_offset_displace[0] = 0
-            bpy.context.active_object.modifiers['Array'].relative_offset_displace[2] = bpy.context.scene['gx_space_array']            
-
-        if bpy.context.scene['gx_channels'] == 2 or bpy.context.scene['gx_channels'] == 0:
-            bpy.ops.mesh.primitive_cube_add(location=(i*bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space']/2, 0, 0))
-            bpy.context.active_object.scale = (bpy.context.scene['gx_scale_x'], bpy.context.scene['gx_scale_y'], bpy.context.scene['gx_scale_z'])
-
-            name = "bar_r_" + str(i+1)
-            bpy.context.active_object.name = name
-            
-            bpy.ops.object.modifier_add(type='ARRAY')
-            bpy.context.active_object.modifiers['Array'].count = 10                 
-            bpy.context.active_object.modifiers['Array'].relative_offset_displace[0] = 0
-            bpy.context.active_object.modifiers['Array'].relative_offset_displace[2] = bpy.context.scene['gx_space_array']
+        generate_objects(i)
 
     if bpy.context.scene['gx_channels'] == 1 or bpy.context.scene['gx_channels'] == 0:    
         bpy.context.scene.objects.active = bpy.data.objects["bar_l_" + str(bpy.context.scene['gx_count_x'])]
@@ -407,66 +432,106 @@ def update_space_array(self, context):
             name = "bar_r_" + str(i+1)
             bpy.data.objects[name].modifiers['Array'].relative_offset_displace[2] = bpy.context.scene['gx_space_array']
 
+def drivering(i):
+    if bpy.context.scene['gx_channels'] == 1 or bpy.context.scene['gx_channels'] == 0:         
+        name = "bar_l_" + str(i+1)
+        name2 = "obj_l_" + str(i+1)
+        try:
+            bpy.data.objects[name2]
+            if bpy.context.scene['gx_type'] == 0:
+                try:
+                    bpy.data.objects[name].modifiers['Array'].driver_remove('count')
+                except:
+                    True     
+                obj = bpy.data.objects[name] #def drivering
+                mdf = obj.modifiers['Array'].driver_add('count')
+                drv = mdf.driver
+                drv.type = 'AVERAGE'
+                var = drv.variables.new()
+                var.name = 'name'
+                var.type = 'TRANSFORMS'
+                targ = var.targets[0]
+                targ.id = bpy.data.objects[name2]
+                targ.transform_type = 'SCALE_Z'
+                targ.bone_target = 'Driver'
+                fmod = mdf.modifiers[0]
+                fmod.poly_order = 1
+                fmod.coefficients = (0.0, bpy.context.scene['gx_driver_power'])
+
+            elif bpy.context.scene['gx_type'] == 1 or bpy.context.scene['gx_type'] == 2:
+                try:
+                    bpy.data.objects[name].driver_remove('scale', 2)
+                except:
+                    True     
+                obj = bpy.data.objects[name] #def drivering
+                mdf = obj.driver_add('scale', 2)
+                drv = mdf.driver
+                drv.type = 'AVERAGE'
+                var = drv.variables.new()
+                var.name = 'name'
+                var.type = 'TRANSFORMS'
+                targ = var.targets[0]
+                targ.id = bpy.data.objects[name2]
+                targ.transform_type = 'SCALE_Z'
+                targ.bone_target = 'Driver'
+                fmod = mdf.modifiers[0]
+                fmod.poly_order = 1
+                fmod.coefficients = (0.0, bpy.context.scene['gx_driver_power'])
+        except:
+            True
+
+    if bpy.context.scene['gx_channels'] == 2 or bpy.context.scene['gx_channels'] == 0:            
+        name = "bar_r_" + str(i+1)     
+        name2 = "obj_r_" + str(i+1)  
+        try:
+            bpy.data.objects[name2]
+            if bpy.context.scene['gx_type'] == 0:
+                try:
+                    bpy.data.objects[name].modifiers['Array'].driver_remove('count')
+                except:
+                    True     
+                obj = bpy.data.objects[name] #def drivering
+                mdf = obj.modifiers['Array'].driver_add('count')
+                drv = mdf.driver
+                drv.type = 'AVERAGE'
+                var = drv.variables.new()
+                var.name = 'name'
+                var.type = 'TRANSFORMS'
+                targ = var.targets[0]
+                targ.id = bpy.data.objects[name2]
+                targ.transform_type = 'SCALE_Z'
+                targ.bone_target = 'Driver'
+                fmod = mdf.modifiers[0]
+                fmod.poly_order = 1
+                fmod.coefficients = (0.0, bpy.context.scene['gx_driver_power'])
+
+            elif bpy.context.scene['gx_type'] == 1 or bpy.context.scene['gx_type'] == 2:
+                try:
+                    bpy.data.objects[name].driver_remove('scale', 2)
+                except:
+                    True     
+                obj = bpy.data.objects[name] #def drivering
+                mdf = obj.driver_add('scale', 2)
+                drv = mdf.driver
+                drv.type = 'AVERAGE'
+                var = drv.variables.new()
+                var.name = 'name'
+                var.type = 'TRANSFORMS'
+                targ = var.targets[0]
+                targ.id = bpy.data.objects[name2]
+                targ.transform_type = 'SCALE_Z'
+                targ.bone_target = 'Driver'
+                fmod = mdf.modifiers[0]
+                fmod.poly_order = 1
+                fmod.coefficients = (0.0, bpy.context.scene['gx_driver_power'])
+        except:
+            True
+
 def update_drivers():
     try:
         bpy.types.Scene.bakedobjects
         for i in range(bpy.types.Scene.bakedobjects):
-            if bpy.context.scene['gx_channels'] == 1 or bpy.context.scene['gx_channels'] == 0:         
-                name = "bar_l_" + str(i+1)
-                name2 = "obj_l_" + str(i+1)
-                
-                bpy.data.objects[name].modifiers['Array'].driver_remove('count')
-                 
-                obj = bpy.data.objects[name] #def drivering
-                mdf = obj.modifiers['Array'].driver_add('count')
-                drv = mdf.driver
-                drv.type = 'AVERAGE'
-                var = drv.variables.new()
-                var.name = 'name'
-                var.type = 'TRANSFORMS'
-                targ = var.targets[0]
-                targ.id = bpy.data.objects[name2]
-                targ.transform_type = 'SCALE_Z'
-                targ.bone_target = 'Driver'
-                fmod = mdf.modifiers[0]
-                fmod.poly_order = 1
-                fmod.coefficients = (0.0, bpy.context.scene['gx_driver_power'])
-           
-                #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.type = 'AVERAGE'
-                #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.variables.new().name = 'name'
-                #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.variables.new().type = 'TRANSFORMS'
-                #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.variables.new().targets[0].id = bpy.data.objects[name2]
-                #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.variables.new().targets[0].transform_type = 'SCALE_Z'
-                #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.variables.new().targets[0].bone_target = 'Driver'
-
-            if bpy.context.scene['gx_channels'] == 2 or bpy.context.scene['gx_channels'] == 0:            
-                name = "bar_r_" + str(i+1)     
-                name2 = "obj_r_" + str(i+1)  
-                
-                bpy.data.objects[name].modifiers['Array'].driver_remove('count')    
-                                  
-                obj = bpy.data.objects[name] #def drivering
-                mdf = obj.modifiers['Array'].driver_add('count')
-                drv = mdf.driver
-                drv.type = 'AVERAGE'
-                var = drv.variables.new()
-                var.name = 'name'
-                var.type = 'TRANSFORMS'
-                targ = var.targets[0]
-                targ.id = bpy.data.objects[name2]
-                targ.transform_type = 'SCALE_Z'
-                targ.bone_target = 'Driver'
-                fmod = mdf.modifiers[0]
-                fmod.poly_order = 1
-                fmod.coefficients = (0.0, bpy.context.scene['gx_driver_power'])
-           
-                #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.type = 'AVERAGE'
-                #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.variables.new().name = 'name'
-                #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.variables.new().type = 'TRANSFORMS'
-                #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.variables.new().targets[0].id = bpy.data.objects[name2]
-                #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.variables.new().targets[0].transform_type = 'SCALE_Z'
-                #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.variables.new().targets[0].bone_target = 'Driver'
-        
+            drivering(i)
     except:
         print("no drivers connections to update") 
 
@@ -474,62 +539,7 @@ def update_drivers3(self, context):
     try:
         bpy.types.Scene.bakedobjects
         for i in range(bpy.types.Scene.bakedobjects):
-            if bpy.context.scene['gx_channels'] == 1 or bpy.context.scene['gx_channels'] == 0:         
-                name = "bar_l_" + str(i+1)
-                name2 = "obj_l_" + str(i+1)
-                
-                bpy.data.objects[name].modifiers['Array'].driver_remove('count')
-                 
-                obj = bpy.data.objects[name] #def drivering
-                mdf = obj.modifiers['Array'].driver_add('count')
-                drv = mdf.driver
-                drv.type = 'AVERAGE'
-                var = drv.variables.new()
-                var.name = 'name'
-                var.type = 'TRANSFORMS'
-                targ = var.targets[0]
-                targ.id = bpy.data.objects[name2]
-                targ.transform_type = 'SCALE_Z'
-                targ.bone_target = 'Driver'
-                fmod = mdf.modifiers[0]
-                fmod.poly_order = 1
-                fmod.coefficients = (0.0, bpy.context.scene['gx_driver_power'])
-           
-                #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.type = 'AVERAGE'
-                #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.variables.new().name = 'name'
-                #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.variables.new().type = 'TRANSFORMS'
-                #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.variables.new().targets[0].id = bpy.data.objects[name2]
-                #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.variables.new().targets[0].transform_type = 'SCALE_Z'
-                #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.variables.new().targets[0].bone_target = 'Driver'
-
-            if bpy.context.scene['gx_channels'] == 2 or bpy.context.scene['gx_channels'] == 0:            
-                name = "bar_r_" + str(i+1)     
-                name2 = "obj_r_" + str(i+1)  
-                
-                bpy.data.objects[name].modifiers['Array'].driver_remove('count')    
-                                  
-                obj = bpy.data.objects[name] #def drivering
-                mdf = obj.modifiers['Array'].driver_add('count')
-                drv = mdf.driver
-                drv.type = 'AVERAGE'
-                var = drv.variables.new()
-                var.name = 'name'
-                var.type = 'TRANSFORMS'
-                targ = var.targets[0]
-                targ.id = bpy.data.objects[name2]
-                targ.transform_type = 'SCALE_Z'
-                targ.bone_target = 'Driver'
-                fmod = mdf.modifiers[0]
-                fmod.poly_order = 1
-                fmod.coefficients = (0.0, bpy.context.scene['gx_driver_power'])
-           
-                #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.type = 'AVERAGE'
-                #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.variables.new().name = 'name'
-                #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.variables.new().type = 'TRANSFORMS'
-                #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.variables.new().targets[0].id = bpy.data.objects[name2]
-                #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.variables.new().targets[0].transform_type = 'SCALE_Z'
-                #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.variables.new().targets[0].bone_target = 'Driver'
-        
+            drivering(i)
     except:
         print("no drivers connections to update") 
         
@@ -537,67 +547,9 @@ def update_drivers2():
     try:
         bpy.types.Scene.bakedobjects
         for i in range(bpy.types.Scene.allobjects, bpy.types.Scene.bakedobjects):
-            if bpy.context.scene['gx_channels'] == 1 or bpy.context.scene['gx_channels'] == 0:         
-                name = "bar_l_" + str(i+1)
-                name2 = "obj_l_" + str(i+1)
-                
-                bpy.data.objects[name].modifiers['Array'].driver_remove('count')
-                 
-                obj = bpy.data.objects[name] #def drivering
-                mdf = obj.modifiers['Array'].driver_add('count')
-                drv = mdf.driver
-                drv.type = 'AVERAGE'
-                var = drv.variables.new()
-                var.name = 'name'
-                var.type = 'TRANSFORMS'
-                targ = var.targets[0]
-                targ.id = bpy.data.objects[name2]
-                targ.transform_type = 'SCALE_Z'
-                targ.bone_target = 'Driver'
-                fmod = mdf.modifiers[0]
-                fmod.poly_order = 1
-                fmod.coefficients = (0.0, bpy.context.scene['gx_driver_power'])
-           
-                #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.type = 'AVERAGE'
-                #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.variables.new().name = 'name'
-                #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.variables.new().type = 'TRANSFORMS'
-                #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.variables.new().targets[0].id = bpy.data.objects[name2]
-                #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.variables.new().targets[0].transform_type = 'SCALE_Z'
-                #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.variables.new().targets[0].bone_target = 'Driver'
-
-            if bpy.context.scene['gx_channels'] == 2 or bpy.context.scene['gx_channels'] == 0:            
-                name = "bar_r_" + str(i+1)     
-                name2 = "obj_r_" + str(i+1)     
-                
-                bpy.data.objects[name].modifiers['Array'].driver_remove('count') 
-                                  
-                obj = bpy.data.objects[name] #def drivering
-                mdf = obj.modifiers['Array'].driver_add('count')
-                drv = mdf.driver
-                drv.type = 'AVERAGE'
-                var = drv.variables.new()
-                var.name = 'name'
-                var.type = 'TRANSFORMS'
-                targ = var.targets[0]
-                targ.id = bpy.data.objects[name2]
-                targ.transform_type = 'SCALE_Z'
-                targ.bone_target = 'Driver'
-                fmod = mdf.modifiers[0]
-                fmod.poly_order = 1
-                fmod.coefficients = (0.0, bpy.context.scene['gx_driver_power'])
-           
-                #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.type = 'AVERAGE'
-                #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.variables.new().name = 'name'
-                #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.variables.new().type = 'TRANSFORMS'
-                #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.variables.new().targets[0].id = bpy.data.objects[name2]
-                #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.variables.new().targets[0].transform_type = 'SCALE_Z'
-                #bpy.data.objects[name].modifiers['Array'].driver_add('count').driver.variables.new().targets[0].bone_target = 'Driver'
-        
+            drivering(i)
     except:
         print("no drivers connections to update")         
-                                
-
-    
 
 def update_channels(self, context):
     gxstart()
@@ -616,7 +568,6 @@ def update_space_x(self, context):
             if bpy.context.scene['gx_channels'] == 1 or bpy.context.scene['gx_channels'] == 0:        
                 name = "obj_l_" + str(i+1)
                 bpy.data.objects[name].location[0] = -(i*bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space']/2)
-
             if bpy.context.scene['gx_channels'] == 2 or bpy.context.scene['gx_channels'] == 0:
                 name = "obj_r_" + str(i+1)
                 bpy.data.objects[name].location[0] = i*bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space']/2            
@@ -627,10 +578,65 @@ def update_scale(self, context):
     for i in range(bpy.context.scene['gx_count_x']):
         if bpy.context.scene['gx_channels'] == 1 or bpy.context.scene['gx_channels'] == 0:        
             name = "bar_l_" + str(i+1)
-            bpy.data.objects[name].scale = (bpy.context.scene['gx_scale_x'], bpy.context.scene['gx_scale_y'], bpy.context.scene['gx_scale_z'])
+            if bpy.context.scene['gx_type'] == 0:
+                bpy.data.objects[name].scale = (bpy.context.scene['gx_scale_x'], bpy.context.scene['gx_scale_y'], bpy.context.scene['gx_scale_z'])
+            elif bpy.context.scene['gx_type'] == 1:
+                bpy.data.objects[name].scale = (bpy.context.scene['gx_cube_scale_x'], bpy.context.scene['gx_cube_scale_y'], bpy.context.scene['gx_cube_scale_z'])
+            elif bpy.context.scene['gx_type'] == 2:
+                bpy.data.objects[name].scale = (bpy.context.scene['gx_cube_scale_x'], bpy.context.scene['gx_cube_scale_y'], bpy.context.scene['gx_cube_scale_z']*2) 
         if bpy.context.scene['gx_channels'] == 2 or bpy.context.scene['gx_channels'] == 0:
             name = "bar_r_" + str(i+1)
-            bpy.data.objects[name].scale = (bpy.context.scene['gx_scale_x'], bpy.context.scene['gx_scale_y'], bpy.context.scene['gx_scale_z'])       
+            if bpy.context.scene['gx_type'] == 0:
+                bpy.data.objects[name].scale = (bpy.context.scene['gx_scale_x'], bpy.context.scene['gx_scale_y'], bpy.context.scene['gx_scale_z'])
+            elif bpy.context.scene['gx_type'] == 1:
+                bpy.data.objects[name].scale = (bpy.context.scene['gx_cube_scale_x'], bpy.context.scene['gx_cube_scale_y'], bpy.context.scene['gx_cube_scale_z'])
+            elif bpy.context.scene['gx_type'] == 2:
+                bpy.data.objects[name].scale = (bpy.context.scene['gx_cube_scale_x'], bpy.context.scene['gx_cube_scale_y'], bpy.context.scene['gx_cube_scale_z']*2) 
+
+def generate_objects(i):
+    gx_save = bpy.context.scene.cursor_location.copy()
+    if bpy.context.scene['gx_channels'] == 1 or bpy.context.scene['gx_channels'] == 0:
+        bpy.ops.mesh.primitive_cube_add(location=(-(i*bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space']/2), 0, 0))
+        if bpy.context.scene['gx_type'] == 0:
+            bpy.context.active_object.scale = (bpy.context.scene['gx_scale_x'], bpy.context.scene['gx_scale_y'], bpy.context.scene['gx_scale_z'])
+        elif bpy.context.scene['gx_type'] == 1:
+            bpy.context.active_object.scale = (bpy.context.scene['gx_cube_scale_x'], bpy.context.scene['gx_cube_scale_y'], bpy.context.scene['gx_cube_scale_z'])
+            bpy.context.active_object.location[2] = bpy.context.scene['gx_cube_scale_z']
+            bpy.context.scene.cursor_location = (-(i*bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space']/2), 0, 0)  
+            bpy.ops.object.origin_set(type='ORIGIN_CURSOR') 
+        elif bpy.context.scene['gx_type'] == 2:
+            bpy.context.active_object.scale = (bpy.context.scene['gx_cube_scale_x'], bpy.context.scene['gx_cube_scale_y'], bpy.context.scene['gx_cube_scale_z']*2)
+                
+        name = "bar_l_" + str(i+1)
+        bpy.context.active_object.name = name
+
+        if bpy.context.scene['gx_type'] == 0:
+            bpy.ops.object.modifier_add(type='ARRAY')
+            bpy.context.active_object.modifiers['Array'].count = 10                
+            bpy.context.active_object.modifiers['Array'].relative_offset_displace[0] = 0
+            bpy.context.active_object.modifiers['Array'].relative_offset_displace[2] = bpy.context.scene['gx_space_array']
+                
+    if bpy.context.scene['gx_channels'] == 2 or bpy.context.scene['gx_channels'] == 0:
+        bpy.ops.mesh.primitive_cube_add(location=(i*bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space']/2, 0, 0))
+        if bpy.context.scene['gx_type'] == 0:
+            bpy.context.active_object.scale = (bpy.context.scene['gx_scale_x'], bpy.context.scene['gx_scale_y'], bpy.context.scene['gx_scale_z'])
+        elif bpy.context.scene['gx_type'] == 1:
+            bpy.context.active_object.scale = (bpy.context.scene['gx_cube_scale_x'], bpy.context.scene['gx_cube_scale_y'], bpy.context.scene['gx_cube_scale_z'])
+            bpy.context.active_object.location[2] = bpy.context.scene['gx_cube_scale_z']
+            bpy.context.scene.cursor_location = (i*bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space']/2, 0, 0)
+            bpy.ops.object.origin_set(type='ORIGIN_CURSOR')             
+        elif bpy.context.scene['gx_type'] == 2:
+            bpy.context.active_object.scale = (bpy.context.scene['gx_cube_scale_x'], bpy.context.scene['gx_cube_scale_y'], bpy.context.scene['gx_cube_scale_z']*2)
+
+        name = "bar_r_" + str(i+1)
+        bpy.context.active_object.name = name
+               
+        if bpy.context.scene['gx_type'] == 0:
+            bpy.ops.object.modifier_add(type='ARRAY')
+            bpy.context.active_object.modifiers['Array'].count = 10                     
+            bpy.context.active_object.modifiers['Array'].relative_offset_displace[0] = 0
+            bpy.context.active_object.modifiers['Array'].relative_offset_displace[2] = bpy.context.scene['gx_space_array']
+    bpy.context.scene.cursor_location = gx_save  
         
 def update_count(self, context):
     if bpy.types.Scene.allobjects > bpy.context.scene['gx_count_x']:
@@ -654,31 +660,8 @@ def update_count(self, context):
         bpy.types.Scene.allobjects = bpy.context.scene['gx_count_x']
     elif bpy.types.Scene.allobjects < bpy.context.scene['gx_count_x']:
         for i in range(bpy.types.Scene.allobjects, bpy.context.scene['gx_count_x']):
-            if bpy.context.scene['gx_channels'] == 1 or bpy.context.scene['gx_channels'] == 0:
-                bpy.ops.mesh.primitive_cube_add(location=(-(i*bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space']/2), 0, 0))
-                bpy.context.active_object.scale = (bpy.context.scene['gx_scale_x'], bpy.context.scene['gx_scale_y'], bpy.context.scene['gx_scale_z'])
-                
-                name = "bar_l_" + str(i+1)
-                bpy.context.active_object.name = name
-                
-                bpy.ops.object.modifier_add(type='ARRAY')
-                bpy.context.active_object.modifiers['Array'].count = 10                
-                bpy.context.active_object.modifiers['Array'].relative_offset_displace[0] = 0
-                bpy.context.active_object.modifiers['Array'].relative_offset_displace[2] = bpy.context.scene['gx_space_array']
-                
-
-            if bpy.context.scene['gx_channels'] == 2 or bpy.context.scene['gx_channels'] == 0:
-                bpy.ops.mesh.primitive_cube_add(location=(i*bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space']/2, 0, 0))
-                bpy.context.active_object.scale = (bpy.context.scene['gx_scale_x'], bpy.context.scene['gx_scale_y'], bpy.context.scene['gx_scale_z'])
-
-                name = "bar_r_" + str(i+1)
-                bpy.context.active_object.name = name
-                
-                bpy.ops.object.modifier_add(type='ARRAY')
-                bpy.context.active_object.modifiers['Array'].count = 10                     
-                bpy.context.active_object.modifiers['Array'].relative_offset_displace[0] = 0
-                bpy.context.active_object.modifiers['Array'].relative_offset_displace[2] = bpy.context.scene['gx_space_array']
-                
+            
+            generate_objects(i)
             try:
                 if bpy.types.Scene.allobjects < bpy.types.Scene.bakedobjects:
                     update_drivers2()
@@ -710,6 +693,7 @@ def unregister():
 
 if __name__ == "__main__":
     register()
+
 
 
 
