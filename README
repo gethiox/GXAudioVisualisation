@@ -2,8 +2,8 @@ GXAudioVisualisation (GxAV) - Generate Audio Visualization in Blender!
 
 #### 24.07.2014 - 0.92v beta ####
 - added dynamically changed driver-power control
-- initial implementation of 'professional' bake algorithm, temporarily named "TERCJA", [more 
-info (PL)](https://pl.wikipedia.org/wiki/Tercja_(akustyka))
+- initial implementation of 'professional' bake algorithm, temporarily named "TERCJA",
+  more info about it: (PL) https://pl.wikipedia.org/wiki/Tercja_(akustyka)
 
 #### 22.07.2014 - 0.91v beta ####
 - reorganized panel
