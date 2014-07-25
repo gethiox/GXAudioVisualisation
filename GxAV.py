@@ -19,7 +19,7 @@ along with this program.  If not, see http://www.gnu.org/licenses/
 bl_info = {
     "name": "GxAV",
     "author": "Sławomir Kur (Gethiox)",
-    "version": (0, 92),
+    "version": (0, 93),
     "blender": (2, 7, 1),
     "location": "Properties > Scene",
     "description": "Bake Spectrum Visualizer by sound file",
@@ -35,6 +35,10 @@ import math
   
 
 def initprop():
+    bpy.types.Scene.gx_freq_debug = bpy.props.BoolProperty(
+        name = "Freq Debug",
+        description = "Enter an bool lul")
+    
     bpy.types.Scene.gx_driver_power = bpy.props.FloatProperty(
         name = "Driver Power",
         default = 20.0,
@@ -165,6 +169,9 @@ def initpropvalues():
     bpy.context.scene['gx_max_freq'] = 20000.0  
     bpy.context.scene['gx_mode'] = 2
     bpy.context.scene['gx_driver_power'] = 20.0
+    bpy.context.scene['gx_freq_debug'] = False
+    
+    bpy.context.scene['gx_init'] = 1
         
 
 class LayoutDemoPanel(bpy.types.Panel):
@@ -181,8 +188,7 @@ class LayoutDemoPanel(bpy.types.Panel):
 
         # Big render button
         # layout.label(text="Big Button:")
-        row = layout.row()
-        row.operator("object.gx_init_variables", icon="COLOR", text="Init/Reset Variables")  
+
         row = layout.row()
         row.operator("object.gx_create_base", icon="MODIFIER", text="Create Visualizer Base")
 
@@ -216,15 +222,24 @@ class LayoutDemoPanel(bpy.types.Panel):
         row.prop(scene, "gx_start")
         row = layout.row()        
         row.prop(scene, "gx_min_freq")                       
-        row.prop(scene, "gx_max_freq")        
+        row.prop(scene, "gx_max_freq")      
+        row = layout.row()
+        row.prop(scene, "gx_freq_debug")  
         row = layout.row()
         row.operator("object.gx_bake", icon="RADIO", text="(re)Bake animation data")     
+        row = layout.row()
+        row.operator("object.gx_init_variables", icon="COLOR", text="Init/Reset Variables")          
           
            
         
 
 
 def gxstart():
+    try: 
+        bpy.context.scene['gx_init']
+    except:
+        initpropvalues()        
+   
     bpy.ops.object.select_all(action="DESELECT")
     try:
         for i in range(bpy.context.scene['gx_count_x']):
@@ -326,6 +341,12 @@ def gxbake():
             bpy.context.area.type = 'GRAPH_EDITOR'
             bpy.ops.graph.sound_bake(filepath=bpy.context.scene['gx_left_file'], low=a, high=b)
             bpy.context.area.type = 'PROPERTIES'
+            
+            if bpy.context.scene['gx_freq_debug'] == 1:
+                bpy.ops.object.add(location=(-(i*bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space']/2), 0, -4))
+                name = str(round(a, 1)) + " - " + str(round(b, 1))
+                bpy.context.active_object.name = name            
+            
         if bpy.context.scene['gx_channels'] == 2 or bpy.context.scene['gx_channels'] == 0:
             bpy.context.scene.frame_current = bpy.context.scene['gx_start']
             bpy.ops.object.add(location=(i*bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space']/2, 0, -2))
@@ -336,6 +357,11 @@ def gxbake():
             bpy.context.area.type = 'GRAPH_EDITOR'
             bpy.ops.graph.sound_bake(filepath=bpy.context.scene['gx_right_file'], low=a, high=b)
             bpy.context.area.type = 'PROPERTIES'
+            
+            if bpy.context.scene['gx_freq_debug'] == 1:
+                bpy.ops.object.add(location=(i*bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space']/2, 0, -4))
+                name = str(round(a, 1)) + " - " + str(round(b, 1))
+                bpy.context.active_object.name = name
 
     bpy.types.Scene.bakedobjects = bpy.context.scene['gx_count_x']    
 
@@ -590,6 +616,7 @@ def update_space_x(self, context):
             if bpy.context.scene['gx_channels'] == 1 or bpy.context.scene['gx_channels'] == 0:        
                 name = "obj_l_" + str(i+1)
                 bpy.data.objects[name].location[0] = -(i*bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space']/2)
+
             if bpy.context.scene['gx_channels'] == 2 or bpy.context.scene['gx_channels'] == 0:
                 name = "obj_r_" + str(i+1)
                 bpy.data.objects[name].location[0] = i*bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space']/2            
@@ -683,6 +710,8 @@ def unregister():
 
 if __name__ == "__main__":
     register()
+
+
 
 
 
