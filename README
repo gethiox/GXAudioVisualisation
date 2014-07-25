@@ -2,7 +2,7 @@ GXAudioVisualisation (GxAV) - Generate Audio Visualization in Blender!
 
 #### 25.07.2014 - 0.93v beta ####
 - added 'freq info' feature (for debug)
-- a little bit change in panel (and usability, now you don't need press "init variables" anymore, yay \o/
+- a little bit change in panel (and usability, now you don't need to press "init variables" anymore, yay \o/
 
 #### 24.07.2014 - 0.92v beta ####
 - added dynamically changed driver-power control
