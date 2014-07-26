@@ -1,5 +1,12 @@
 GXAudioVisualisation (GxAV) - Generate Audio Visualization in Blender!
 
+#### 26.07.2014 - 0.99v RC2 ####
+- all known bugs has been fixed \o/
+- added box of 'Bake sound to F-Curves' variables
+- Next targets:
+  * I hope 'TERCJA' baking mode going to stable
+  * "history bars" feature (http://youtu.be/ZOYp0FfVE4Q)
+
 #### 25.07.2014 - 0.99v RC1 ####
 - few bugs has been repaired
 - added new 2 visualisation mode (object, center object)

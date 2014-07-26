@@ -31,7 +31,36 @@ bl_info = {
 import bpy
 import math
   
+
 def initprop():
+    bpy.types.Scene.gx_accumulate = bpy.props.BoolProperty(
+        name = "Accumulate",
+        description = "Accumulate")
+
+    bpy.types.Scene.gx_additive = bpy.props.BoolProperty(
+        name = "Use additive",
+        description = "Use additive")
+
+    bpy.types.Scene.gx_square = bpy.props.BoolProperty(
+        name = "Square",
+        description = "Square")
+
+    bpy.types.Scene.gx_sthreshold = bpy.props.FloatProperty(
+        name = "Sthreshold",
+        default = 0.1)    
+
+    bpy.types.Scene.gx_threshold = bpy.props.FloatProperty(
+        name = "Threshold",
+        default = 0.0)    
+
+    bpy.types.Scene.gx_release = bpy.props.FloatProperty(
+        name = "Release",
+        default = 0.2)    
+
+    bpy.types.Scene.gx_attack = bpy.props.FloatProperty(
+        name = "Attack",
+        default = 0.005)    
+
     bpy.types.Scene.gx_cube_scale_x = bpy.props.FloatProperty(
         name = "Scale X",
         default = 1.0,
@@ -52,7 +81,7 @@ def initprop():
 
     bpy.types.Scene.gx_cube_scale_z = bpy.props.FloatProperty(
         name = "Scale Z",
-        default = 1.0,
+        default = 0.4,
         min = 0, 
         step = 1,
         precision = 2,
@@ -74,7 +103,7 @@ def initprop():
         name = "Driver Power",
         default = 20.0,
         min = 0, 
-        step = 1,
+        step = 5,
         precision = 2,
         description = "Enter an float",
         update=update_drivers3)     
@@ -201,9 +230,17 @@ def initpropvalues():
     bpy.context.scene['gx_driver_power'] = 20.0
     bpy.context.scene['gx_freq_debug'] = False
     bpy.context.scene['gx_type'] = 0    
-    bpy.context.scene['gx_cube_scale_x'] = 1.0
-    bpy.context.scene['gx_cube_scale_y'] = 1.0
-    bpy.context.scene['gx_cube_scale_z'] = 1.0
+    bpy.context.scene['gx_cube_scale_x'] = 0.7
+    bpy.context.scene['gx_cube_scale_y'] = 0.6
+    bpy.context.scene['gx_cube_scale_z'] = 0.4
+    
+    bpy.context.scene['gx_attack'] = 0.005 
+    bpy.context.scene['gx_release'] = 0.2 
+    bpy.context.scene['gx_threshold'] = 0.0
+    bpy.context.scene['gx_accumulate'] = False
+    bpy.context.scene['gx_additive'] = False
+    bpy.context.scene['gx_square'] = False
+    bpy.context.scene['gx_sthreshold'] = 0.1
     
     bpy.context.scene['gx_init'] = 1
         
@@ -275,11 +312,26 @@ class LayoutDemoPanel(bpy.types.Panel):
                 row.operator("object.gx_bake", icon="RADIO", text="(re)Bake animation data")     
                 row = layout.row()
                 row.operator("object.gx_init_variables", icon="COLOR", text="Init/Reset Variables")          
+
+                box = layout.box()
+                box.label(text="'Bake Sound to F-Curves' function options:")
+                split = box.split()
+                col = split.column(align=True)    
+                col.prop(scene, 'gx_attack')
+                col.prop(scene, 'gx_release')
+                col = split.column(align=True)  
+                col.prop(scene, 'gx_threshold')
+                col.prop(scene, 'gx_sthreshold')
+                split = box.split()
+                col = split.column()
+           
+                col.prop(scene, 'gx_accumulate')
+                col = split.column()
+                col.prop(scene, 'gx_additive')
+                col = split.column()        
+                col.prop(scene, 'gx_square')
         except:
             True  
-           
-        
-
 
 def gxstart():
     try: 
@@ -364,7 +416,18 @@ def gxbake():
             
             bpy.ops.anim.keyframe_insert_menu(type='Scaling')
             bpy.context.area.type = 'GRAPH_EDITOR'
-            bpy.ops.graph.sound_bake(filepath=bpy.context.scene['gx_left_file'], low=a, high=b)
+            try:
+                bpy.ops.graph.sound_bake(filepath=bpy.context.scene['gx_left_file'],
+                    low=a, high=b,
+                    attack = bpy.context.scene['gx_attack'],
+                    release = bpy.context.scene['gx_release'],
+                    threshold = bpy.context.scene['gx_threshold'],
+                    use_accumulate = bpy.context.scene['gx_accumulate'],
+                    use_additive = bpy.context.scene['gx_additive'],
+                    use_square = bpy.context.scene['gx_square'],
+                    sthreshold = bpy.context.scene['gx_sthreshold']) 
+            except:
+                print("bake erorr")
             bpy.context.area.type = 'PROPERTIES'
             
             if bpy.context.scene['gx_freq_debug'] == 1:
@@ -380,7 +443,18 @@ def gxbake():
             
             bpy.ops.anim.keyframe_insert_menu(type='Scaling')
             bpy.context.area.type = 'GRAPH_EDITOR'
-            bpy.ops.graph.sound_bake(filepath=bpy.context.scene['gx_right_file'], low=a, high=b)
+            try:
+                bpy.ops.graph.sound_bake(filepath=bpy.context.scene['gx_right_file'],
+                    low=a, high=b,
+                    attack = bpy.context.scene['gx_attack'],
+                    release = bpy.context.scene['gx_release'],
+                    threshold = bpy.context.scene['gx_threshold'],
+                    use_accumulate = bpy.context.scene['gx_accumulate'],
+                    use_additive = bpy.context.scene['gx_additive'],
+                    use_square = bpy.context.scene['gx_square'],
+                    sthreshold = bpy.context.scene['gx_sthreshold']) 
+            except:
+                print("bake erorr")
             bpy.context.area.type = 'PROPERTIES'
             
             if bpy.context.scene['gx_freq_debug'] == 1:
@@ -582,16 +656,20 @@ def update_scale(self, context):
                 bpy.data.objects[name].scale = (bpy.context.scene['gx_scale_x'], bpy.context.scene['gx_scale_y'], bpy.context.scene['gx_scale_z'])
             elif bpy.context.scene['gx_type'] == 1:
                 bpy.data.objects[name].scale = (bpy.context.scene['gx_cube_scale_x'], bpy.context.scene['gx_cube_scale_y'], bpy.context.scene['gx_cube_scale_z'])
+                #bpy.ops.object.transform_apply(scale=True)
             elif bpy.context.scene['gx_type'] == 2:
                 bpy.data.objects[name].scale = (bpy.context.scene['gx_cube_scale_x'], bpy.context.scene['gx_cube_scale_y'], bpy.context.scene['gx_cube_scale_z']*2) 
+                #bpy.ops.object.transform_apply(scale=True)
         if bpy.context.scene['gx_channels'] == 2 or bpy.context.scene['gx_channels'] == 0:
             name = "bar_r_" + str(i+1)
             if bpy.context.scene['gx_type'] == 0:
                 bpy.data.objects[name].scale = (bpy.context.scene['gx_scale_x'], bpy.context.scene['gx_scale_y'], bpy.context.scene['gx_scale_z'])
             elif bpy.context.scene['gx_type'] == 1:
                 bpy.data.objects[name].scale = (bpy.context.scene['gx_cube_scale_x'], bpy.context.scene['gx_cube_scale_y'], bpy.context.scene['gx_cube_scale_z'])
+                #bpy.ops.object.transform_apply(scale=True)
             elif bpy.context.scene['gx_type'] == 2:
                 bpy.data.objects[name].scale = (bpy.context.scene['gx_cube_scale_x'], bpy.context.scene['gx_cube_scale_y'], bpy.context.scene['gx_cube_scale_z']*2) 
+                #bpy.ops.object.transform_apply(scale=True)
 
 def generate_objects(i):
     gx_save = bpy.context.scene.cursor_location.copy()
@@ -601,11 +679,13 @@ def generate_objects(i):
             bpy.context.active_object.scale = (bpy.context.scene['gx_scale_x'], bpy.context.scene['gx_scale_y'], bpy.context.scene['gx_scale_z'])
         elif bpy.context.scene['gx_type'] == 1:
             bpy.context.active_object.scale = (bpy.context.scene['gx_cube_scale_x'], bpy.context.scene['gx_cube_scale_y'], bpy.context.scene['gx_cube_scale_z'])
+            #bpy.ops.object.transform_apply(scale=True)
             bpy.context.active_object.location[2] = bpy.context.scene['gx_cube_scale_z']
             bpy.context.scene.cursor_location = (-(i*bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space']/2), 0, 0)  
             bpy.ops.object.origin_set(type='ORIGIN_CURSOR') 
         elif bpy.context.scene['gx_type'] == 2:
             bpy.context.active_object.scale = (bpy.context.scene['gx_cube_scale_x'], bpy.context.scene['gx_cube_scale_y'], bpy.context.scene['gx_cube_scale_z']*2)
+            #bpy.ops.object.transform_apply(scale=True)
                 
         name = "bar_l_" + str(i+1)
         bpy.context.active_object.name = name
@@ -622,11 +702,13 @@ def generate_objects(i):
             bpy.context.active_object.scale = (bpy.context.scene['gx_scale_x'], bpy.context.scene['gx_scale_y'], bpy.context.scene['gx_scale_z'])
         elif bpy.context.scene['gx_type'] == 1:
             bpy.context.active_object.scale = (bpy.context.scene['gx_cube_scale_x'], bpy.context.scene['gx_cube_scale_y'], bpy.context.scene['gx_cube_scale_z'])
+            #bpy.ops.object.transform_apply(scale=True)
             bpy.context.active_object.location[2] = bpy.context.scene['gx_cube_scale_z']
             bpy.context.scene.cursor_location = (i*bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space']/2, 0, 0)
             bpy.ops.object.origin_set(type='ORIGIN_CURSOR')             
         elif bpy.context.scene['gx_type'] == 2:
             bpy.context.active_object.scale = (bpy.context.scene['gx_cube_scale_x'], bpy.context.scene['gx_cube_scale_y'], bpy.context.scene['gx_cube_scale_z']*2)
+            #bpy.ops.object.transform_apply(scale=True)
 
         name = "bar_r_" + str(i+1)
         bpy.context.active_object.name = name
