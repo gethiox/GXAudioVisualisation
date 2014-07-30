@@ -33,6 +33,21 @@ import math
   
 
 def initprop():
+    bpy.types.Scene.gx_slash_rotate = bpy.props.BoolProperty(
+        name = "Rotation",
+        description = "Slash Rotation",
+        update=update_slash)
+    
+    bpy.types.Scene.gx_slash = bpy.props.FloatProperty(
+        name = "Slash",
+        default = 0.0,
+        description = "Enter an float",
+        update=update_slash)   
+            
+    bpy.types.Scene.gx_zenit = bpy.props.BoolProperty(
+        name = "Zenit",
+        description = "Zenit")
+            
     bpy.types.Scene.gx_accumulate = bpy.props.BoolProperty(
         name = "Accumulate",
         description = "Accumulate")
@@ -81,7 +96,7 @@ def initprop():
 
     bpy.types.Scene.gx_cube_scale_z = bpy.props.FloatProperty(
         name = "Scale Z",
-        default = 0.4,
+        default = 5.6,
         min = 0, 
         step = 1,
         precision = 2,
@@ -232,7 +247,10 @@ def initpropvalues():
     bpy.context.scene['gx_type'] = 0    
     bpy.context.scene['gx_cube_scale_x'] = 0.7
     bpy.context.scene['gx_cube_scale_y'] = 0.6
-    bpy.context.scene['gx_cube_scale_z'] = 0.4
+    bpy.context.scene['gx_cube_scale_z'] = 5.6
+    bpy.context.scene['gx_zenit'] = False
+    bpy.context.scene['gx_slash'] = 0.0
+    bpy.context.scene['gx_slash_rotate'] = True
     
     bpy.context.scene['gx_attack'] = 0.005 
     bpy.context.scene['gx_release'] = 0.2 
@@ -265,6 +283,9 @@ class LayoutDemoPanel(bpy.types.Panel):
                 row.prop(scene, "gx_space_x")
                 row = layout.row()
                 row.prop(scene, "gx_center_space") 
+                row = layout.row()
+                row.prop(scene, "gx_slash")              
+                row.prop(scene, "gx_slash_rotate")   
 
                 row = layout.row()
                 row.prop(scene, "gx_type") 
@@ -330,8 +351,10 @@ class LayoutDemoPanel(bpy.types.Panel):
                 col.prop(scene, 'gx_additive')
                 col = split.column()        
                 col.prop(scene, 'gx_square')
+                #row = layout.row()
+                #row.prop(scene, 'gx_zenit')
         except:
-            True  
+            False
 
 def gxstart():
     try: 
@@ -346,18 +369,19 @@ def gxstart():
             bpy.data.objects[name].select = True  
         bpy.ops.object.delete()    
     except:
-        print("Right channel not exist, skip deleting")
+        False
     try:
         for i in range(bpy.context.scene['gx_count_x']):  
             name = "bar_l_" + str(i+1)      
             bpy.data.objects[name].select = True          
         bpy.ops.object.delete()
     except:
-        print("Left channel not exist, skip deleting")
+        False
         
     for i in range(bpy.context.scene['gx_count_x']):
         generate_objects(i)
-
+        
+        
     if bpy.context.scene['gx_channels'] == 1 or bpy.context.scene['gx_channels'] == 0:    
         bpy.context.scene.objects.active = bpy.data.objects["bar_l_" + str(bpy.context.scene['gx_count_x'])]
         bpy.ops.object.select_pattern(pattern="bar_l_" + str(bpy.context.scene['gx_count_x']))
@@ -366,9 +390,11 @@ def gxstart():
         bpy.ops.object.select_pattern(pattern="bar_r_" + str(bpy.context.scene['gx_count_x']))   
             
     bpy.types.Scene.allobjects = bpy.context.scene['gx_count_x']
-    print("Objects: " + str(bpy.types.Scene.allobjects))      
-    
     update_drivers()  
+    update_slash(True, True)
+    update_space_x(True, True)
+
+
 
 def gxbake():
     try:
@@ -383,20 +409,20 @@ def gxbake():
             bpy.data.objects[name].select = True  
         bpy.ops.object.delete()    
     except:
-        print("Right channel not exist, skip deleting")
+        False
     try:
         for i in range(bpy.types.Scene.bakedobjects):  
             name = "obj_l_" + str(i+1)      
             bpy.data.objects[name].select = True          
         bpy.ops.object.delete()
     except:
-        print("Left channel not exist, skip deleting")   
-        
-    print("debug mode kurwa: " + str(bpy.context.scene['gx_count_x'])) 
-    
-    
+        False 
+
     c = (bpy.context.scene['gx_max_freq']-bpy.context.scene['gx_min_freq'])/bpy.context.scene['gx_count_x']
-    b = 10    
+    b = 10   
+    
+    bpy.context.window_manager.progress_begin(0, 100)
+    bpy.context.window_manager.progress_update(0)
     for i in range(bpy.context.scene['gx_count_x']):
         if bpy.context.scene['gx_mode'] == 2:
             a=pow(2, (1/3))*b
@@ -407,10 +433,11 @@ def gxbake():
         elif bpy.context.scene['gx_mode'] == 0:
             b = ((1 - math.log(bpy.context.scene['gx_count_x']-i, bpy.context.scene['gx_count_x']+1)) * (bpy.context.scene['gx_max_freq']-bpy.context.scene['gx_min_freq'])) + bpy.context.scene['gx_min_freq']
             a = ((1 - math.log(bpy.context.scene['gx_count_x']-i+1, bpy.context.scene['gx_count_x']+1)) * (bpy.context.scene['gx_max_freq']-bpy.context.scene['gx_min_freq'])) + bpy.context.scene['gx_min_freq']
-        print(str(i) + ": " + str(a) + " - " + str(b))
+
+        print(str(i) + ": " + str(round(a, 1)) + " - " + str(round(b, 1)))
         if bpy.context.scene['gx_channels'] == 1 or bpy.context.scene['gx_channels'] == 0:
             bpy.context.scene.frame_current = bpy.context.scene['gx_start']
-            bpy.ops.object.add(location=(-(i*bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space']/2), 0, -2))
+            bpy.ops.object.add(location=(-(i*bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space']/2), bpy.context.scene['gx_slash'] * i, -2))
             name = "obj_l_" + str(i+1)            
             bpy.context.active_object.name = name
             
@@ -427,17 +454,20 @@ def gxbake():
                     use_square = bpy.context.scene['gx_square'],
                     sthreshold = bpy.context.scene['gx_sthreshold']) 
             except:
-                print("bake erorr")
+                False
             bpy.context.area.type = 'PROPERTIES'
             
+            if bpy.context.scene['gx_channels'] == 0:
+                bpy.context.window_manager.progress_update((i+0.5)/bpy.context.scene['gx_count_x'])
+
             if bpy.context.scene['gx_freq_debug'] == 1:
-                bpy.ops.object.add(location=(-(i*bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space']/2), 0, -4))
+                bpy.ops.object.add(location=(-(i*bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space']/2), bpy.context.scene['gx_slash'] * i, -4))
                 name = str(round(a, 1)) + " - " + str(round(b, 1))
                 bpy.context.active_object.name = name            
             
         if bpy.context.scene['gx_channels'] == 2 or bpy.context.scene['gx_channels'] == 0:
             bpy.context.scene.frame_current = bpy.context.scene['gx_start']
-            bpy.ops.object.add(location=(i*bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space']/2, 0, -2))
+            bpy.ops.object.add(location=(i*bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space']/2, bpy.context.scene['gx_slash'] * i, -2))
             name = "obj_r_" + str(i+1)
             bpy.context.active_object.name = name
             
@@ -454,14 +484,21 @@ def gxbake():
                     use_square = bpy.context.scene['gx_square'],
                     sthreshold = bpy.context.scene['gx_sthreshold']) 
             except:
-                print("bake erorr")
+                False
             bpy.context.area.type = 'PROPERTIES'
-            
+
+            if bpy.context.scene['gx_channels'] == 0:
+                bpy.context.window_manager.progress_update((i+1)/bpy.context.scene['gx_count_x'])
+
             if bpy.context.scene['gx_freq_debug'] == 1:
-                bpy.ops.object.add(location=(i*bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space']/2, 0, -4))
+                bpy.ops.object.add(location=(i*bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space']/2, bpy.context.scene['gx_slash'] * i, -4))
                 name = str(round(a, 1)) + " - " + str(round(b, 1))
                 bpy.context.active_object.name = name
 
+        if bpy.context.scene['gx_channels'] == 1 or bpy.context.scene['gx_channels'] == 2:
+            bpy.context.window_manager.progress_update((i+1)/bpy.context.scene['gx_count_x'])        
+
+    bpy.context.window_manager.progress_end()
     bpy.types.Scene.bakedobjects = bpy.context.scene['gx_count_x']    
 
 class GxInitVariables(bpy.types.Operator):
@@ -491,7 +528,6 @@ class GxBake(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
     
     def execute(self, context):
-        print("bake")
         gxbake()
         update_drivers()
 
@@ -506,6 +542,34 @@ def update_space_array(self, context):
             name = "bar_r_" + str(i+1)
             bpy.data.objects[name].modifiers['Array'].relative_offset_displace[2] = bpy.context.scene['gx_space_array']
 
+def update_slash(self, context):    
+    for i in range(bpy.context.scene['gx_count_x']):
+        if bpy.context.scene['gx_channels'] == 1 or bpy.context.scene['gx_channels'] == 0:        
+            name = "bar_l_" + str(i+1)
+            bpy.data.objects[name].location[1] = bpy.context.scene['gx_slash'] * i
+            if bpy.context.scene['gx_slash_rotate'] == True:
+                bpy.data.objects[name].rotation_euler[2] = -math.asin(bpy.context.scene['gx_slash']/math.sqrt(math.pow(bpy.context.scene['gx_space_x'],2) + math.pow(bpy.context.scene['gx_slash'],2)))
+            else:
+                bpy.data.objects[name].rotation_euler[2] = 0
+        if bpy.context.scene['gx_channels'] == 2 or bpy.context.scene['gx_channels'] == 0:
+            name = "bar_r_" + str(i+1)
+            bpy.data.objects[name].location[1] = bpy.context.scene['gx_slash'] * i
+            if bpy.context.scene['gx_slash_rotate'] == True:
+                bpy.data.objects[name].rotation_euler[2] = math.asin(bpy.context.scene['gx_slash']/math.sqrt(math.pow(bpy.context.scene['gx_space_x'],2) + math.pow(bpy.context.scene['gx_slash'],2)))  
+            else:
+                bpy.data.objects[name].rotation_euler[2] = 0      
+    try:
+        bpy.types.Scene.bakedobjects
+        for i in range(bpy.types.Scene.bakedobjects):
+            if bpy.context.scene['gx_channels'] == 1 or bpy.context.scene['gx_channels'] == 0:        
+                name = "obj_l_" + str(i+1)
+                bpy.data.objects[name].location[1] = bpy.context.scene['gx_slash'] * i
+            if bpy.context.scene['gx_channels'] == 2 or bpy.context.scene['gx_channels'] == 0:
+                name = "obj_r_" + str(i+1)
+                bpy.data.objects[name].location[1] = bpy.context.scene['gx_slash']  * i
+    except:
+        False                
+
 def drivering(i):
     if bpy.context.scene['gx_channels'] == 1 or bpy.context.scene['gx_channels'] == 0:         
         name = "bar_l_" + str(i+1)
@@ -516,7 +580,7 @@ def drivering(i):
                 try:
                     bpy.data.objects[name].modifiers['Array'].driver_remove('count')
                 except:
-                    True     
+                    False   
                 obj = bpy.data.objects[name] #def drivering
                 mdf = obj.modifiers['Array'].driver_add('count')
                 drv = mdf.driver
@@ -536,7 +600,7 @@ def drivering(i):
                 try:
                     bpy.data.objects[name].driver_remove('scale', 2)
                 except:
-                    True     
+                    False   
                 obj = bpy.data.objects[name] #def drivering
                 mdf = obj.driver_add('scale', 2)
                 drv = mdf.driver
@@ -552,7 +616,7 @@ def drivering(i):
                 fmod.poly_order = 1
                 fmod.coefficients = (0.0, bpy.context.scene['gx_driver_power'])
         except:
-            True
+            False
 
     if bpy.context.scene['gx_channels'] == 2 or bpy.context.scene['gx_channels'] == 0:            
         name = "bar_r_" + str(i+1)     
@@ -563,7 +627,7 @@ def drivering(i):
                 try:
                     bpy.data.objects[name].modifiers['Array'].driver_remove('count')
                 except:
-                    True     
+                    False    
                 obj = bpy.data.objects[name] #def drivering
                 mdf = obj.modifiers['Array'].driver_add('count')
                 drv = mdf.driver
@@ -583,7 +647,7 @@ def drivering(i):
                 try:
                     bpy.data.objects[name].driver_remove('scale', 2)
                 except:
-                    True     
+                    False    
                 obj = bpy.data.objects[name] #def drivering
                 mdf = obj.driver_add('scale', 2)
                 drv = mdf.driver
@@ -599,7 +663,7 @@ def drivering(i):
                 fmod.poly_order = 1
                 fmod.coefficients = (0.0, bpy.context.scene['gx_driver_power'])
         except:
-            True
+            False
 
 def update_drivers():
     try:
@@ -607,7 +671,7 @@ def update_drivers():
         for i in range(bpy.types.Scene.bakedobjects):
             drivering(i)
     except:
-        print("no drivers connections to update") 
+        False
 
 def update_drivers3(self, context):
     try:
@@ -615,7 +679,7 @@ def update_drivers3(self, context):
         for i in range(bpy.types.Scene.bakedobjects):
             drivering(i)
     except:
-        print("no drivers connections to update") 
+        False
         
 def update_drivers2():
     try:
@@ -623,7 +687,7 @@ def update_drivers2():
         for i in range(bpy.types.Scene.allobjects, bpy.types.Scene.bakedobjects):
             drivering(i)
     except:
-        print("no drivers connections to update")         
+        False       
 
 def update_channels(self, context):
     gxstart()
@@ -633,9 +697,17 @@ def update_space_x(self, context):
         if bpy.context.scene['gx_channels'] == 1 or bpy.context.scene['gx_channels'] == 0:        
             name = "bar_l_" + str(i+1)
             bpy.data.objects[name].location[0] = -(i*bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space']/2)
+            if bpy.context.scene['gx_slash_rotate'] == True:
+                bpy.data.objects[name].rotation_euler[2] = -math.asin(bpy.context.scene['gx_slash']/math.sqrt(math.pow(bpy.context.scene['gx_space_x'],2) + math.pow(bpy.context.scene['gx_slash'],2)))  
+            else:
+                bpy.data.objects[name].rotation_euler[2] = 0    
         if bpy.context.scene['gx_channels'] == 2 or bpy.context.scene['gx_channels'] == 0:
             name = "bar_r_" + str(i+1)
             bpy.data.objects[name].location[0] = i*bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space']/2
+            if bpy.context.scene['gx_slash_rotate'] == True:
+                bpy.data.objects[name].rotation_euler[2] = math.asin(bpy.context.scene['gx_slash']/math.sqrt(math.pow(bpy.context.scene['gx_space_x'],2) + math.pow(bpy.context.scene['gx_slash'],2)))  
+            else:
+                bpy.data.objects[name].rotation_euler[2] = 0                
     try:
         bpy.types.Scene.bakedobjects
         for i in range(bpy.types.Scene.bakedobjects):
@@ -646,7 +718,7 @@ def update_space_x(self, context):
                 name = "obj_r_" + str(i+1)
                 bpy.data.objects[name].location[0] = i*bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space']/2            
     except:
-        print("no baked objects to change position")
+        False
             
 def update_scale(self, context):
     for i in range(bpy.context.scene['gx_count_x']):
@@ -674,14 +746,17 @@ def update_scale(self, context):
 def generate_objects(i):
     gx_save = bpy.context.scene.cursor_location.copy()
     if bpy.context.scene['gx_channels'] == 1 or bpy.context.scene['gx_channels'] == 0:
-        bpy.ops.mesh.primitive_cube_add(location=(-(i*bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space']/2), 0, 0))
+        bpy.ops.mesh.primitive_cube_add(location=(-(i*bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space']/2), bpy.context.scene['gx_slash'] * i, 0))
+        if bpy.context.scene['gx_slash_rotate'] == True:
+            bpy.context.active_object.rotation_euler[2] = -math.asin(bpy.context.scene['gx_slash']/math.sqrt(math.pow(bpy.context.scene['gx_space_x'],2) + math.pow(bpy.context.scene['gx_slash'],2)))  
+            
         if bpy.context.scene['gx_type'] == 0:
             bpy.context.active_object.scale = (bpy.context.scene['gx_scale_x'], bpy.context.scene['gx_scale_y'], bpy.context.scene['gx_scale_z'])
         elif bpy.context.scene['gx_type'] == 1:
             bpy.context.active_object.scale = (bpy.context.scene['gx_cube_scale_x'], bpy.context.scene['gx_cube_scale_y'], bpy.context.scene['gx_cube_scale_z'])
             #bpy.ops.object.transform_apply(scale=True)
             bpy.context.active_object.location[2] = bpy.context.scene['gx_cube_scale_z']
-            bpy.context.scene.cursor_location = (-(i*bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space']/2), 0, 0)  
+            bpy.context.scene.cursor_location = (-(i*bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space']/2), bpy.context.scene['gx_slash'] * i, 0)  
             bpy.ops.object.origin_set(type='ORIGIN_CURSOR') 
         elif bpy.context.scene['gx_type'] == 2:
             bpy.context.active_object.scale = (bpy.context.scene['gx_cube_scale_x'], bpy.context.scene['gx_cube_scale_y'], bpy.context.scene['gx_cube_scale_z']*2)
@@ -697,14 +772,17 @@ def generate_objects(i):
             bpy.context.active_object.modifiers['Array'].relative_offset_displace[2] = bpy.context.scene['gx_space_array']
                 
     if bpy.context.scene['gx_channels'] == 2 or bpy.context.scene['gx_channels'] == 0:
-        bpy.ops.mesh.primitive_cube_add(location=(i*bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space']/2, 0, 0))
+        bpy.ops.mesh.primitive_cube_add(location=(i*bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space']/2, bpy.context.scene['gx_slash'] * i, 0))
+        if bpy.context.scene['gx_slash_rotate'] == True:
+            bpy.context.active_object.rotation_euler[2] = math.asin(bpy.context.scene['gx_slash']/math.sqrt(math.pow(bpy.context.scene['gx_space_x'],2) + math.pow(bpy.context.scene['gx_slash'],2)))  
+            
         if bpy.context.scene['gx_type'] == 0:
             bpy.context.active_object.scale = (bpy.context.scene['gx_scale_x'], bpy.context.scene['gx_scale_y'], bpy.context.scene['gx_scale_z'])
         elif bpy.context.scene['gx_type'] == 1:
             bpy.context.active_object.scale = (bpy.context.scene['gx_cube_scale_x'], bpy.context.scene['gx_cube_scale_y'], bpy.context.scene['gx_cube_scale_z'])
             #bpy.ops.object.transform_apply(scale=True)
             bpy.context.active_object.location[2] = bpy.context.scene['gx_cube_scale_z']
-            bpy.context.scene.cursor_location = (i*bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space']/2, 0, 0)
+            bpy.context.scene.cursor_location = (i*bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space']/2, bpy.context.scene['gx_slash'] * i, 0)
             bpy.ops.object.origin_set(type='ORIGIN_CURSOR')             
         elif bpy.context.scene['gx_type'] == 2:
             bpy.context.active_object.scale = (bpy.context.scene['gx_cube_scale_x'], bpy.context.scene['gx_cube_scale_y'], bpy.context.scene['gx_cube_scale_z']*2)
@@ -748,7 +826,7 @@ def update_count(self, context):
                 if bpy.types.Scene.allobjects < bpy.types.Scene.bakedobjects:
                     update_drivers2()
             except:
-                print("kurwachuj")
+                False
      
         if bpy.context.scene['gx_channels'] == 1 or bpy.context.scene['gx_channels'] == 0:    
             bpy.context.scene.objects.active = bpy.data.objects["bar_l_" + str(bpy.context.scene['gx_count_x'])]
@@ -759,7 +837,7 @@ def update_count(self, context):
 
         bpy.types.Scene.allobjects = bpy.context.scene['gx_count_x']
     else:
-        print("chuj")
+        False
         
 def register():
     bpy.utils.register_class(GxCreateBase)
@@ -775,6 +853,8 @@ def unregister():
 
 if __name__ == "__main__":
     register()
+
+
 
 
 
