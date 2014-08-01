@@ -1,61 +1,54 @@
 __author__ = "Xevaquor"
 
 from math import *
-import numpy as np
-import matplotlib.pyplot as plt
+#import numpy as np
+#import matplotlib.pyplot as plt
 
 
 class Tercja:
 	def __init__(self, start, stop):
+		"""
+
+		:param start: tuple with starting (left-down) point (x,y)
+		:param stop:  tuple with ending (top-right) point (x,y)
+		"""
 		self.magic = 33.  # this magic number is quite arbitrary. I am not a musician so
 		# I mostly do not ever understand what I am coding :D
 		self.start = start
 		self.stop = stop
 		self.minimum_y = 1  # because x^0 = 1
-		self.maximum_y = self.compute(33)
+		self.maximum_y = self.compute(self.magic)
 
 
-	def compute(self, x):
+	@staticmethod
+	def compute(x):
 		return (pow(2, (1. / 3))) ** x
 
 	def get_value(self, xx):
-		value = self.compute(xx / (self.stop[0] - self.start[0]) * self.magic)
+		value = self.compute(self.magic * xx / (self.stop[0] - self.start[0]))
 		relative = value / (self.maximum_y - self.minimum_y)
 		return (self.stop[1] - self.start[1]) * relative + self.start[1]
 
 
+if __name__ == "__main__":
+	# example usage:
+	xd = Tercja((0, 0), (100, 100))
+	xd = Tercja((0, 0), (100, 100))
+	y = xd.get_value(70)
 
-def narf(x):
-	return (pow(2, (1. / 3))) ** x
+	#uncoment following for graph
 
-def normalized_narf(x1, x2, x):
-	diff = x2 - x1
-	normalized = x * 1.0 / diff
-	newx = normalized * 33
-	buff = narf(newx)
-	return buff
+	'''steps = 1000
+	a = (0, 60)
+	b = (100, 100000)
 
+	xd = Tercja(a, b)
 
-minima = 0
-maxima = 1000
+	x = np.linspace(a[0], b[0] - 1, steps)
+	y = []
+	for i in x:
+		y.append(xd.get_value(i))
 
-max_value_plot = maxima
-steps = 1000
-a = (minima, 1000)
-b = (maxima, 10000)
-
-xd = Tercja(a,b)
-
-xd.stop = (maxima, xd.compute(33))
-x = np.linspace(minima, max_value_plot, steps)
-y = []
-for i in x:
-	y.append(normalized_narf(minima, maxima, i))
-z = []
-for i in x:
-	z.append(xd.get_value(i))
-
-plt.ylim([0, max([max(y), max(z)]) * 1.07])
-plt.plot(x, y)
-plt.plot(x, z, 'r')
-plt.show()
+	plt.ylim([0, max(y) * 1.12])
+	plt.plot(x, y, lw=4., c='purple')
+	plt.show()'''
