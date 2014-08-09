@@ -226,6 +226,7 @@ def initprop():
         name = "Count X",
         default = 5,
         min = 1,
+        options={'ANIMATABLE'},
         description = "Enter an integer",
         update=update_count)
     
@@ -262,6 +263,10 @@ def initpropvalues():
     
     bpy.context.scene['gx_init'] = 1
         
+
+
+
+
 class LayoutDemoPanel(bpy.types.Panel):
     """Creates a Panel in the scene context of the properties editor"""
     bl_label = "GXAudioVisualisation"
@@ -277,48 +282,62 @@ class LayoutDemoPanel(bpy.types.Panel):
         row.operator("object.gx_create_base", icon="MODIFIER", text="(re)Create Visualizer Base")
         try:
             if bpy.context.scene['gx_init'] == 1:
-                layout.label(text="Parameters:")
-                row = layout.row()
-                row.prop(scene, "gx_count_x")        
-                row.prop(scene, "gx_space_x")
+                layout.label(text="Parameters:", icon="UI")
                 row = layout.row()
                 row.prop(scene, "gx_center_space") 
                 row = layout.row()
-                row.prop(scene, "gx_slash")              
-                row.prop(scene, "gx_slash_rotate")   
+                row.prop(scene, "gx_count_x")        
+                row.prop(scene, "gx_space_x")
+                row = layout.row(align=True) 
+                row.prop(scene, "gx_slash_rotate", icon="MAN_ROT")  
+                if bpy.context.scene['gx_slash_rotate'] == True:
+                    row.prop(scene, "gx_slash")
+                else:
+                    row.label(text="")
 
-                row = layout.row()
-                row.prop(scene, "gx_type") 
                 try:
                     if bpy.context.scene['gx_type'] == 0:
-                        row = layout.row(align=True)
-                        row.label(text="Object Scale:")
-                        row.prop(scene, 'gx_scale_x')
-                        row.prop(scene, 'gx_scale_y')
-                        row.prop(scene, 'gx_scale_z')
+                        row = layout.row()
+                        row.prop(scene, "gx_type", icon="MOD_ARRAY", text="Mode")                         
+                        split = layout.split()
+                        col = split.column()
+                        col.label(text="Object Scale:", icon="MANIPUL")
+                        col = split.column(align=True)
+                        col.prop(scene, 'gx_scale_x', text="X")
+                        col.prop(scene, 'gx_scale_y', text="Y")
+                        col.prop(scene, 'gx_scale_z', text="Z")
                         row = layout.row()
                         row.prop(scene, "gx_space_array")
                     else:
-                        row = layout.row(align=True)
-                        row.label(text="Object Scale:")
-                        row.prop(scene, 'gx_cube_scale_x')
-                        row.prop(scene, 'gx_cube_scale_y')
-                        row.prop(scene, 'gx_cube_scale_z')                        
+                        row = layout.row()
+                        row.prop(scene, "gx_type", icon="MESH_CUBE", text="Mode")                             
+                        split = layout.split()
+                        col = split.column()
+                        col.label(text="Object Scale:", icon="MANIPUL")
+                        col = split.column(align=True)
+                        col.prop(scene, 'gx_cube_scale_x', text="X")
+                        col.prop(scene, 'gx_cube_scale_y', text="Y")
+                        col.prop(scene, 'gx_cube_scale_z', text="Z")                        
                 except:
                     layout.label(text="Missing variables, please report bug")
-                layout.label(text="VisMode Parameters:")
+
                 row = layout.row()
-                
+                row = layout.row()
                 row.prop(scene, "gx_driver_power")        
-        
-                layout.label(text="Bake Parameters:")
+                
+                row = layout.row()
                 box = layout.box()
-                box.label("Channels to bake and audio files path:")
-                box.prop(scene, "gx_channels")
+                box.label("Channels to bake and audio files path:", icon="SOUND")
+                if bpy.context.scene['gx_channels'] == 0:
+                    box.prop(scene, "gx_channels", icon="ARROW_LEFTRIGHT")
+                elif bpy.context.scene['gx_channels'] == 1:
+                    box.prop(scene, "gx_channels", icon="BACK")
+                elif bpy.context.scene['gx_channels'] == 2:
+                    box.prop(scene, "gx_channels", icon="FORWARD")
                 box.prop(scene, "gx_left_file")
                 box.prop(scene, "gx_right_file")     
                 row = layout.row()    
-                row.prop(scene, "gx_mode")
+                row.prop(scene, "gx_mode", icon="IPO_ELASTIC")
                 if bpy.context.scene['gx_mode'] == 2:
                     row = layout.row()
                     row.label(text="TERCJA is Beta! You need to set 'Count X' to 32 or 33 for best results", icon='ERROR')
@@ -327,15 +346,15 @@ class LayoutDemoPanel(bpy.types.Panel):
                 row = layout.row()        
                 row.prop(scene, "gx_min_freq")                       
                 row.prop(scene, "gx_max_freq")      
-                row = layout.row()
-                row.prop(scene, "gx_freq_debug")  
+                #row = layout.row()
+                #row.prop(scene, "gx_freq_debug")  
                 row = layout.row()
                 row.operator("object.gx_bake", icon="RADIO", text="(re)Bake animation data")     
                 row = layout.row()
                 row.operator("object.gx_init_variables", icon="COLOR", text="Init/Reset Variables")          
 
                 box = layout.box()
-                box.label(text="'Bake Sound to F-Curves' function options:")
+                box.label(text="'Bake Sound to F-Curves' options:", icon="UI")
                 split = box.split()
                 col = split.column(align=True)    
                 col.prop(scene, 'gx_attack')
@@ -393,6 +412,65 @@ def gxstart():
     update_drivers()  
     update_slash(True, True)
     update_space_x(True, True)
+
+
+
+#__author__ = "Xevaquor"
+
+from math import *
+#import numpy as np
+#import matplotlib.pyplot as plt
+
+
+class Tercja:
+	def __init__(self, start, stop):
+		"""
+
+		:param start: tuple with starting (left-down) point (x,y)
+		:param stop:  tuple with ending (top-right) point (x,y)
+		"""
+		self.magic = 33.  # this magic number is quite arbitrary. I am not a musician so
+		# I mostly do not ever understand what I am coding :D
+		self.start = start
+		self.stop = stop
+		self.minimum_y = 1  # because x^0 = 1
+		self.maximum_y = self.compute(self.magic)
+
+
+	@staticmethod
+	def compute(x):
+		return (pow(2, (1. / 3))) ** x
+
+	def get_value(self, xx):
+		value = self.compute(self.magic * xx / (self.stop[0] - self.start[0]))
+		relative = value / (self.maximum_y - self.minimum_y)
+		return (self.stop[1] - self.start[1]) * relative + self.start[1]
+
+
+if __name__ == "__main__":
+	# example usage:
+	xd = Tercja((0, 0), (100, 100))
+	xd = Tercja((0, 0), (100, 100))
+	y = xd.get_value(70)
+
+	#uncoment following for graph
+
+	'''steps = 1000
+	a = (0, 60)
+	b = (100, 100000)
+
+	xd = Tercja(a, b)
+
+	x = np.linspace(a[0], b[0] - 1, steps)
+	y = []
+	for i in x:
+		y.append(xd.get_value(i))
+
+	plt.ylim([0, max(y) * 1.12])
+	plt.plot(x, y, lw=4., c='purple')
+	plt.show()'''
+
+
 
 
 
@@ -697,14 +775,14 @@ def update_space_x(self, context):
         if bpy.context.scene['gx_channels'] == 1 or bpy.context.scene['gx_channels'] == 0:        
             name = "bar_l_" + str(i+1)
             bpy.data.objects[name].location[0] = -(i*bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space']/2)
-            if bpy.context.scene['gx_slash_rotate'] == True:
+            if bpy.context.scene['gx_slash_rotate'] == True and (bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_slash']) != 0:
                 bpy.data.objects[name].rotation_euler[2] = -math.asin(bpy.context.scene['gx_slash']/math.sqrt(math.pow(bpy.context.scene['gx_space_x'],2) + math.pow(bpy.context.scene['gx_slash'],2)))  
             else:
                 bpy.data.objects[name].rotation_euler[2] = 0    
         if bpy.context.scene['gx_channels'] == 2 or bpy.context.scene['gx_channels'] == 0:
             name = "bar_r_" + str(i+1)
             bpy.data.objects[name].location[0] = i*bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space']/2
-            if bpy.context.scene['gx_slash_rotate'] == True:
+            if bpy.context.scene['gx_slash_rotate'] == True and (bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_slash']) != 0:
                 bpy.data.objects[name].rotation_euler[2] = math.asin(bpy.context.scene['gx_slash']/math.sqrt(math.pow(bpy.context.scene['gx_space_x'],2) + math.pow(bpy.context.scene['gx_slash'],2)))  
             else:
                 bpy.data.objects[name].rotation_euler[2] = 0                
@@ -853,6 +931,7 @@ def unregister():
 
 if __name__ == "__main__":
     register()
+
 
 
 

@@ -1,5 +1,10 @@
 GXAudioVisualisation (GxAV) - Generate Audio Visualization in Blender!
 
+#### 09.08.2014 - 0.99v RC4 ####
+- Gui improvements
+- removed "freq debug"
+- 'Tercja' still isn't implemented :VVV, try to work on it
+
 #### 30.07.2014 - 0.99v RC3 ####
 - added bake progress information
 - added 'slash' feature
