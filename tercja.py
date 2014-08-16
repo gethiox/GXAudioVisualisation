@@ -1,109 +1,82 @@
+#!/usr/bin/env python
+# coding=utf-8
 __author__ = "Xevaquor"
 
-from math import *
-import numpy as np
-import matplotlib.pyplot as plt
+from math import pow, log
 
-
-factor = pow(2, (1. / 3))
+#import numpy as np
+#import matplotlib.pyplot as plt
 
 
 class Tercja:
     def __init__(self, start, stop):
         """
 
-		:param start: tuple with starting (left-down) point (x,y)
-		:param stop:  tuple with ending (top-right) point (x,y)
-		"""
-        self.magic = 1.  # this magic number is quite arbitrary. I am not a musician so
-        # I mostly do not ever understand what I am coding :D
+        :param start: left value of x
+        :param stop: right value of x
+        """
+        self.base = pow(2, (1. / 3))
         self.minimum_x = start
         self.maximum_x = stop
-        self.minimum_y = self.compute(start)  # because x^0 = 1
-        self.maximum_y = self.compute(stop)
 
+    def compute(self, xarg):
+        """
+        Computes value of tercja function ignoring set bounds
+        :param xarg: x argument for func
+        :return: computed y value
+        """
+        return self.base ** xarg
 
-    @staticmethod
-    def compute(x):
-        return (pow(2, (1. / 3))) ** x
-
-    @staticmethod
-    def inverted_compute(x):
-        if x <= 0:
+    def compute_inverse(self, yarg):
+        """
+        Computes inverse of tercja
+        :param yarg: y argument for func
+        :return: corresponding x value
+        """
+        #nonpositive numbers are out of domain of log func
+        #we are silently ignoring it
+        if yarg <= 0:
             return 0
-        return log(x, factor)
+        return log(yarg, self.base)
 
     def get_value_from_x(self, xx):
+        """
+        Computes value from percentage in interval. For more details please see:
+        https://github.com/Xevaquor/GXAudioVisualisation/wiki/Tercja
+        :param xx: Percent in interval. Must be in range [0,1]
+        Eg: .42 means 42%
+        :return: corresponding value of Tercja func
+        """
         assert (0 <= xx <= 1)
-        value = self.compute((self.magic * xx * (self.maximum_x - self.minimum_x)+ self.minimum_x))
-        return value
-
-    def get_value_from_y(self, yy):
-
-        if yy <= 0:
-            return 0
-        nominator = log(factor) / log(yy) - self.minimum_x
-        denomnator = 1. / (self.maximum_x - self.minimum_x)
-
-        return nominator * denomnator
+        return self.compute(xx * (self.maximum_x - self.minimum_x) + self.minimum_x)
 
 
 if __name__ == "__main__":
-    # example usage:
-    # xd = Tercja((0, 0), (100, 100))
-    # xd = Tercja((0, 0), (100, 100))
-    # y = xd.get_value(70)
+    print("For usage info please visit: https://github.com/Xevaquor/GXAudioVisualisation/wiki/Tercja")
 
-    # uncoment following for graph
+    # uncomment following for graph
 
-    steps = 5000
-    a = 5
-    b = 10
-
-    xd = Tercja(a, b)
-
-    x = np.linspace(0, 100, steps)
-    y = []
-    line = []
-    y2 = []
-    y3 = []
-    z = []
-    zi = []
-    for i in x:
-        y.append(xd.compute(i))
-        line.append(i)
-        y2.append(xd.inverted_compute(i))
-    for i in x:
-        z.append(xd.get_value_from_x(i/100.))
-    for i in np.linspace(z[0], z[-1], steps):
-        zi.append(xd.inverted_compute(i))
-
-
-    for i,v in enumerate(range(0,34)):
-        print(str(i) + ":" + str(xd.compute(i)))
-
-    XX = x / 100. * (b - a)+ a
-
-    # print(line)
-    # plt.plot(x, y, lw=4., c='purple')
-    # plt.plot(x, y2, lw=4., c='orange')
-    # plt.plot(x, y3, lw=1., c='red')
-    plt.plot(XX,z, lw=2., c='blue')
-    plt.plot(XX,zi, lw=2., c='red')
-    plt.plot(x, line, '--k')
-    ax = plt.gca()
-    ax.get_xaxis().get_major_formatter().set_scientific(False)
-    ax.get_yaxis().get_major_formatter().set_scientific(False)
-
-    xsample = xd.compute(427)
-    ysamle = xd.inverted_compute(xsample)
-
-    xsample = xd.get_value_from_x(0.7)
-    ysamle = xd.get_value_from_y(xsample)
-
-    print(ysamle)
-
-    #plt.axis('equal')
-    plt.xlim((0,20))
-    plt.ylim((0,20))
-    plt.show()
+    # steps = 500
+    # a = 7
+    # b = 15
+    #
+    # xd = Tercja(a, b)
+    #
+    # assert xd.get_value_from_x(.0 == xd.compute(a))
+    # assert xd.get_value_from_x(1. == xd.compute(b))
+    # assert xd.get_value_from_x(0.5 == xd.compute((a+b)/2.))
+    #
+    #
+    # x = np.linspace(a, b, steps, True)
+    # y = xd.compute(x)
+    # z = [xd.compute_inverse(i) for i in y]
+    #
+    # for i, v in enumerate(range(0, 34)):
+    #     print(str(i) + ":" + str(xd.compute(i)))
+    #
+    # plt.plot(x, y, lw=3.7, c='orange')
+    # plt.plot(y, z, lw=3.7, c='purple')
+    # plt.plot(np.linspace(0, max(y)), np.linspace(0, max(y)), '--k')
+    # plt.legend(["Tercja", "Inverse of Tercja"])
+    #
+    # plt.show()
