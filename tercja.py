@@ -20,7 +20,7 @@ class Tercja:
         self.minimum_x = start
         self.maximum_x = stop
         self.minimum_y = self.compute(start)  # because x^0 = 1
-        self.maximum_y = self.compute(self.magic)
+        self.maximum_y = self.compute(stop)
 
 
     @staticmethod
@@ -39,9 +39,13 @@ class Tercja:
         return value
 
     def get_value_from_y(self, yy):
-        assert (0 <= yy <= 1)
-        value = self.inverted_compute(self.magic * yy / (self.maximum_y - self.minimum_y) + self.minimum_y)
-        return value
+
+        if yy <= 0:
+            return 0
+        nominator = log(factor) / log(yy) - self.minimum_x
+        denomnator = 1. / (self.maximum_x - self.minimum_x)
+
+        return nominator * denomnator
 
 
 if __name__ == "__main__":
@@ -53,11 +57,10 @@ if __name__ == "__main__":
     # uncoment following for graph
 
     steps = 5000
-    a = 49
-    b = 50
+    a = 5
+    b = 10
 
     xd = Tercja(a, b)
-    dd = Tercja(a, b * 4)
 
     x = np.linspace(0, 100, steps)
     y = []
@@ -65,24 +68,42 @@ if __name__ == "__main__":
     y2 = []
     y3 = []
     z = []
+    zi = []
     for i in x:
         y.append(xd.compute(i))
         line.append(i)
         y2.append(xd.inverted_compute(i))
-        y3.append(dd.compute(i))
     for i in x:
         z.append(xd.get_value_from_x(i/100.))
+    for i in np.linspace(z[0], z[-1], steps):
+        zi.append(xd.inverted_compute(i))
 
-    print(z)
+
+    for i,v in enumerate(range(0,34)):
+        print(str(i) + ":" + str(xd.compute(i)))
+
+    XX = x / 100. * (b - a)+ a
+
     # print(line)
     # plt.plot(x, y, lw=4., c='purple')
     # plt.plot(x, y2, lw=4., c='orange')
     # plt.plot(x, y3, lw=1., c='red')
-    plt.plot(x,z, lw=2., c='blue')
+    plt.plot(XX,z, lw=2., c='blue')
+    plt.plot(XX,zi, lw=2., c='red')
     plt.plot(x, line, '--k')
     ax = plt.gca()
     ax.get_xaxis().get_major_formatter().set_scientific(False)
     ax.get_yaxis().get_major_formatter().set_scientific(False)
 
+    xsample = xd.compute(427)
+    ysamle = xd.inverted_compute(xsample)
+
+    xsample = xd.get_value_from_x(0.7)
+    ysamle = xd.get_value_from_y(xsample)
+
+    print(ysamle)
+
     #plt.axis('equal')
+    plt.xlim((0,20))
+    plt.ylim((0,20))
     plt.show()
