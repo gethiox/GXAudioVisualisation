@@ -19,18 +19,56 @@ along with this program.  If not, see http://www.gnu.org/licenses/
 bl_info = {
     "name": "GxAV",
     "author": "Sławomir Kur (Gethiox)",
-    "version": (0, 99),
+    "version": (1, 0),
     "blender": (2, 7, 1),
     "location": "Properties > Scene",
     "description": "Bake Spectrum Visualizer by sound file",
-    "warning": "Stable version is so close!",
     "category": "Animation",
     "wiki_url": "https://github.com/gethiox/GXAudioVisualisation/wiki",
     "tracker_url": "https://github.com/gethiox/GXAudioVisualisation/issues"}
 
 import bpy
 import math
-  
+
+#__author__ = "Xevaquor"
+
+base = math.pow(2, (1. / 3))
+
+def compute(xarg):
+    """
+    Computes value of tercja function ignoring set bounds
+    :param xarg: x argument for func
+    :return: computed y value
+    """
+    return base ** xarg
+
+def compute_inverse(yarg):
+    """
+    Computes inverse of tercja
+    :param yarg: y argument for func
+    :return: corresponding x value
+    """
+    # non positive numbers are out of domain of log func
+    #we are silently ignoring it
+    if yarg <= 0:
+        return 0
+    return math.log(yarg, base)
+
+
+def get_value_from_x(xx, minimum_x, maximum_x):
+    """
+    Computes value from percentage in interval. For more details please see:
+    https://github.com/Xevaquor/GXAudioVisualisation/wiki/Tercja
+    Eg: .42 means 42%
+    :param xx: Percent in interval. Must be in range [0,1]
+    :param minimum_x: Lower x bound
+    :param maximum_x: Upper x bound
+    :return: corresponding value of Tercja func
+    """
+    assert (0 <= xx <= 1)
+    return compute(xx * (maximum_x - minimum_x) + minimum_x)
+
+#\__author__ = "Xevaquor"
 
 def initprop():
     bpy.types.Scene.gx_slash_rotate = bpy.props.BoolProperty(
@@ -126,7 +164,7 @@ def initprop():
     bpy.types.Scene.gx_mode = bpy.props.EnumProperty(
         items = [('0', 'Logarithm', 'log'),
                  ('1', 'Linear', 'linear'),
-                 ('2', 'TERCJA', 'tercja')],
+                 ('2', 'Tercja (recomended)', 'tercja')],
         name = "Frequency Mode")  
     
     bpy.types.Scene.gx_min_freq = bpy.props.FloatProperty(
@@ -200,7 +238,7 @@ def initprop():
         update=update_scale)                   
     
     bpy.types.Scene.gx_channels = bpy.props.EnumProperty(
-        items = [('0', 'Both', 'Left and Right channel'),
+        items = [('0', 'Stereo', 'Left and Right channel'),
                  ('1', 'Left', 'Left channel'),
                  ('2', 'Right', 'Right channel')],
         name = "Channels",
@@ -231,24 +269,24 @@ def initprop():
         update=update_count)
     
 def initpropvalues():
-    bpy.context.scene['gx_space_x'] = 2.0
+    bpy.context.scene['gx_space_x'] = 0.2
     bpy.context.scene['gx_count_x'] = 32
-    bpy.context.scene['gx_center_space'] = 2.0
+    bpy.context.scene['gx_center_space'] = 0.2
     bpy.context.scene['gx_channels'] = 2
-    bpy.context.scene['gx_scale_x'] = 0.7
-    bpy.context.scene['gx_scale_y'] = 0.6
-    bpy.context.scene['gx_scale_z'] = 0.4
+    bpy.context.scene['gx_scale_x'] = 0.07
+    bpy.context.scene['gx_scale_y'] = 0.06
+    bpy.context.scene['gx_scale_z'] = 0.04
     bpy.context.scene['gx_start'] = 100
-    bpy.context.scene['gx_space_array'] = 1.5
+    bpy.context.scene['gx_space_array'] = 1.7
     bpy.context.scene['gx_min_freq'] = 10.0
     bpy.context.scene['gx_max_freq'] = 20000.0  
     bpy.context.scene['gx_mode'] = 2
     bpy.context.scene['gx_driver_power'] = 20.0
     bpy.context.scene['gx_freq_debug'] = False
     bpy.context.scene['gx_type'] = 0    
-    bpy.context.scene['gx_cube_scale_x'] = 0.7
-    bpy.context.scene['gx_cube_scale_y'] = 0.6
-    bpy.context.scene['gx_cube_scale_z'] = 5.6
+    bpy.context.scene['gx_cube_scale_x'] = 0.07
+    bpy.context.scene['gx_cube_scale_y'] = 0.06
+    bpy.context.scene['gx_cube_scale_z'] = 0.20
     bpy.context.scene['gx_zenit'] = False
     bpy.context.scene['gx_slash'] = 0.0
     bpy.context.scene['gx_slash_rotate'] = True
@@ -262,12 +300,10 @@ def initpropvalues():
     bpy.context.scene['gx_sthreshold'] = 0.1
     
     bpy.context.scene['gx_init'] = 1
-        
 
+calc = 1
 
-
-
-class LayoutDemoPanel(bpy.types.Panel):
+class GXAVPanel(bpy.types.Panel):
     """Creates a Panel in the scene context of the properties editor"""
     bl_label = "GXAudioVisualisation"
     bl_idname = "SCENE_PT_layout"
@@ -285,15 +321,13 @@ class LayoutDemoPanel(bpy.types.Panel):
                 layout.label(text="Parameters:", icon="UI")
                 row = layout.row()
                 row.prop(scene, "gx_center_space") 
-                row = layout.row()
+                row = layout.row(align=True)
                 row.prop(scene, "gx_count_x")        
                 row.prop(scene, "gx_space_x")
-                row = layout.row(align=True) 
+                row = layout.row() 
+                row.prop(scene, "gx_slash")
                 row.prop(scene, "gx_slash_rotate", icon="MAN_ROT")  
-                if bpy.context.scene['gx_slash_rotate'] == True:
-                    row.prop(scene, "gx_slash")
-                else:
-                    row.label(text="")
+
 
                 try:
                     if bpy.context.scene['gx_type'] == 0:
@@ -307,6 +341,7 @@ class LayoutDemoPanel(bpy.types.Panel):
                         col.prop(scene, 'gx_scale_y', text="Y")
                         col.prop(scene, 'gx_scale_z', text="Z")
                         row = layout.row()
+                        row.label(text="Array modifier space:", icon="UNLINKED")
                         row.prop(scene, "gx_space_array")
                     else:
                         row = layout.row()
@@ -317,7 +352,10 @@ class LayoutDemoPanel(bpy.types.Panel):
                         col = split.column(align=True)
                         col.prop(scene, 'gx_cube_scale_x', text="X")
                         col.prop(scene, 'gx_cube_scale_y', text="Y")
-                        col.prop(scene, 'gx_cube_scale_z', text="Z")                        
+                        #col.prop(scene, 'gx_cube_scale_z', text="Z")
+                        col.label(text="") 
+                        row = layout.row()
+                        row.label(text="")                          
                 except:
                     layout.label(text="Missing variables, please report bug")
 
@@ -337,10 +375,7 @@ class LayoutDemoPanel(bpy.types.Panel):
                 box.prop(scene, "gx_left_file")
                 box.prop(scene, "gx_right_file")     
                 row = layout.row()    
-                row.prop(scene, "gx_mode", icon="IPO_ELASTIC")
-                if bpy.context.scene['gx_mode'] == 2:
-                    row = layout.row()
-                    row.label(text="TERCJA is Beta! You need to set 'Count X' to 32 or 33 for best results", icon='ERROR')
+                row.prop(scene, "gx_mode", icon="RNDCURVE")
                 row = layout.row()  
                 row.prop(scene, "gx_start")
                 row = layout.row()        
@@ -349,9 +384,9 @@ class LayoutDemoPanel(bpy.types.Panel):
                 #row = layout.row()
                 #row.prop(scene, "gx_freq_debug")  
                 row = layout.row()
-                row.operator("object.gx_bake", icon="RADIO", text="(re)Bake animation data")     
-                row = layout.row()
-                row.operator("object.gx_init_variables", icon="COLOR", text="Init/Reset Variables")          
+                row.operator("object.gx_bake", icon="RADIO", text="(re)Bake animation data")    
+                row = layout.row() 
+                row.label(text="")
 
                 box = layout.box()
                 box.label(text="'Bake Sound to F-Curves' options:", icon="UI")
@@ -372,6 +407,8 @@ class LayoutDemoPanel(bpy.types.Panel):
                 col.prop(scene, 'gx_square')
                 #row = layout.row()
                 #row.prop(scene, 'gx_zenit')
+                row = layout.row()
+                row.operator("object.gx_init_variables", icon="COLOR", text="Init/Reset Variables")   
         except:
             False
 
@@ -413,68 +450,13 @@ def gxstart():
     update_slash(True, True)
     update_space_x(True, True)
 
-
-
-#__author__ = "Xevaquor"
-
-from math import *
-#import numpy as np
-#import matplotlib.pyplot as plt
-
-
-class Tercja:
-	def __init__(self, start, stop):
-		"""
-
-		:param start: tuple with starting (left-down) point (x,y)
-		:param stop:  tuple with ending (top-right) point (x,y)
-		"""
-		self.magic = 33.  # this magic number is quite arbitrary. I am not a musician so
-		# I mostly do not ever understand what I am coding :D
-		self.start = start
-		self.stop = stop
-		self.minimum_y = 1  # because x^0 = 1
-		self.maximum_y = self.compute(self.magic)
-
-
-	@staticmethod
-	def compute(x):
-		return (pow(2, (1. / 3))) ** x
-
-	def get_value(self, xx):
-		value = self.compute(self.magic * xx / (self.stop[0] - self.start[0]))
-		relative = value / (self.maximum_y - self.minimum_y)
-		return (self.stop[1] - self.start[1]) * relative + self.start[1]
-
-
-if __name__ == "__main__":
-	# example usage:
-	xd = Tercja((0, 0), (100, 100))
-	xd = Tercja((0, 0), (100, 100))
-	y = xd.get_value(70)
-
-	#uncoment following for graph
-
-	'''steps = 1000
-	a = (0, 60)
-	b = (100, 100000)
-
-	xd = Tercja(a, b)
-
-	x = np.linspace(a[0], b[0] - 1, steps)
-	y = []
-	for i in x:
-		y.append(xd.get_value(i))
-
-	plt.ylim([0, max(y) * 1.12])
-	plt.plot(x, y, lw=4., c='purple')
-	plt.show()'''
-
-
-
-
-
 def gxbake():
+    ### calculate for tercja
+    tercja_x_min = compute_inverse(bpy.context.scene['gx_min_freq'])
+    tercja_x_max = compute_inverse(bpy.context.scene['gx_max_freq'])
+    tercja_step = (1/bpy.context.scene['gx_count_x'])
+    ###
+
     try:
         bpy.types.Scene.bakedobjects
     except:
@@ -496,15 +478,15 @@ def gxbake():
     except:
         False 
 
+    b = bpy.context.scene['gx_min_freq']
     c = (bpy.context.scene['gx_max_freq']-bpy.context.scene['gx_min_freq'])/bpy.context.scene['gx_count_x']
-    b = 10   
     
     bpy.context.window_manager.progress_begin(0, 100)
     bpy.context.window_manager.progress_update(0)
     for i in range(bpy.context.scene['gx_count_x']):
         if bpy.context.scene['gx_mode'] == 2:
-            a=pow(2, (1/3))*b
-            b=a
+            a = b
+            b = get_value_from_x((i+1)*tercja_step, tercja_x_min, tercja_x_max)    
         elif bpy.context.scene['gx_mode'] == 1:
             b = ((bpy.context.scene['gx_max_freq']-bpy.context.scene['gx_min_freq'])-c*(bpy.context.scene['gx_count_x']-i-1)) + bpy.context.scene['gx_min_freq']
             a = ((bpy.context.scene['gx_max_freq']-bpy.context.scene['gx_min_freq'])-c*(bpy.context.scene['gx_count_x']-i)) + bpy.context.scene['gx_min_freq']
@@ -512,7 +494,7 @@ def gxbake():
             b = ((1 - math.log(bpy.context.scene['gx_count_x']-i, bpy.context.scene['gx_count_x']+1)) * (bpy.context.scene['gx_max_freq']-bpy.context.scene['gx_min_freq'])) + bpy.context.scene['gx_min_freq']
             a = ((1 - math.log(bpy.context.scene['gx_count_x']-i+1, bpy.context.scene['gx_count_x']+1)) * (bpy.context.scene['gx_max_freq']-bpy.context.scene['gx_min_freq'])) + bpy.context.scene['gx_min_freq']
 
-        print(str(i) + ": " + str(round(a, 1)) + " - " + str(round(b, 1)))
+        print(str(i) + ": " + str(round(a, 1)) + " Hz - " + str(round(b, 1)) + " Hz")
         if bpy.context.scene['gx_channels'] == 1 or bpy.context.scene['gx_channels'] == 0:
             bpy.context.scene.frame_current = bpy.context.scene['gx_start']
             bpy.ops.object.add(location=(-(i*bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space']/2), bpy.context.scene['gx_slash'] * i, -2))
@@ -520,27 +502,28 @@ def gxbake():
             bpy.context.active_object.name = name
             
             bpy.ops.anim.keyframe_insert_menu(type='Scaling')
-            bpy.context.area.type = 'GRAPH_EDITOR'
-            try:
-                bpy.ops.graph.sound_bake(filepath=bpy.context.scene['gx_left_file'],
-                    low=a, high=b,
-                    attack = bpy.context.scene['gx_attack'],
-                    release = bpy.context.scene['gx_release'],
-                    threshold = bpy.context.scene['gx_threshold'],
-                    use_accumulate = bpy.context.scene['gx_accumulate'],
-                    use_additive = bpy.context.scene['gx_additive'],
-                    use_square = bpy.context.scene['gx_square'],
-                    sthreshold = bpy.context.scene['gx_sthreshold']) 
-            except:
-                False
-            bpy.context.area.type = 'PROPERTIES'
+            if calc == 1:
+                bpy.context.area.type = 'GRAPH_EDITOR'
+                try:
+                    bpy.ops.graph.sound_bake(filepath=bpy.context.scene['gx_left_file'],
+                        low=a, high=b,
+                        attack = bpy.context.scene['gx_attack'],
+                        release = bpy.context.scene['gx_release'],
+                        threshold = bpy.context.scene['gx_threshold'],
+                        use_accumulate = bpy.context.scene['gx_accumulate'],
+                        use_additive = bpy.context.scene['gx_additive'],
+                        use_square = bpy.context.scene['gx_square'],
+                        sthreshold = bpy.context.scene['gx_sthreshold']) 
+                except:
+                    False
+                bpy.context.area.type = 'PROPERTIES'
             
             if bpy.context.scene['gx_channels'] == 0:
                 bpy.context.window_manager.progress_update((i+0.5)/bpy.context.scene['gx_count_x'])
 
             if bpy.context.scene['gx_freq_debug'] == 1:
                 bpy.ops.object.add(location=(-(i*bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space']/2), bpy.context.scene['gx_slash'] * i, -4))
-                name = str(round(a, 1)) + " - " + str(round(b, 1))
+                name = (str(i) + ": " + str(round(a, 1)) + " Hz - " + str(round(b, 1)) + " Hz")
                 bpy.context.active_object.name = name            
             
         if bpy.context.scene['gx_channels'] == 2 or bpy.context.scene['gx_channels'] == 0:
@@ -550,27 +533,28 @@ def gxbake():
             bpy.context.active_object.name = name
             
             bpy.ops.anim.keyframe_insert_menu(type='Scaling')
-            bpy.context.area.type = 'GRAPH_EDITOR'
-            try:
-                bpy.ops.graph.sound_bake(filepath=bpy.context.scene['gx_right_file'],
-                    low=a, high=b,
-                    attack = bpy.context.scene['gx_attack'],
-                    release = bpy.context.scene['gx_release'],
-                    threshold = bpy.context.scene['gx_threshold'],
-                    use_accumulate = bpy.context.scene['gx_accumulate'],
-                    use_additive = bpy.context.scene['gx_additive'],
-                    use_square = bpy.context.scene['gx_square'],
-                    sthreshold = bpy.context.scene['gx_sthreshold']) 
-            except:
-                False
-            bpy.context.area.type = 'PROPERTIES'
+            if calc == 1:
+                bpy.context.area.type = 'GRAPH_EDITOR'
+                try:
+                    bpy.ops.graph.sound_bake(filepath=bpy.context.scene['gx_right_file'],
+                        low=a, high=b,
+                        attack = bpy.context.scene['gx_attack'],
+                        release = bpy.context.scene['gx_release'],
+                        threshold = bpy.context.scene['gx_threshold'],
+                        use_accumulate = bpy.context.scene['gx_accumulate'],
+                        use_additive = bpy.context.scene['gx_additive'],
+                        use_square = bpy.context.scene['gx_square'],
+                        sthreshold = bpy.context.scene['gx_sthreshold']) 
+                except:
+                    False
+                bpy.context.area.type = 'PROPERTIES'
 
             if bpy.context.scene['gx_channels'] == 0:
                 bpy.context.window_manager.progress_update((i+1)/bpy.context.scene['gx_count_x'])
 
             if bpy.context.scene['gx_freq_debug'] == 1:
                 bpy.ops.object.add(location=(i*bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space']/2, bpy.context.scene['gx_slash'] * i, -4))
-                name = str(round(a, 1)) + " - " + str(round(b, 1))
+                name = (str(i) + ": " + str(round(a, 1)) + " Hz - " + str(round(b, 1)) + " Hz")
                 bpy.context.active_object.name = name
 
         if bpy.context.scene['gx_channels'] == 1 or bpy.context.scene['gx_channels'] == 2:
@@ -831,14 +815,16 @@ def generate_objects(i):
         if bpy.context.scene['gx_type'] == 0:
             bpy.context.active_object.scale = (bpy.context.scene['gx_scale_x'], bpy.context.scene['gx_scale_y'], bpy.context.scene['gx_scale_z'])
         elif bpy.context.scene['gx_type'] == 1:
-            bpy.context.active_object.scale = (bpy.context.scene['gx_cube_scale_x'], bpy.context.scene['gx_cube_scale_y'], bpy.context.scene['gx_cube_scale_z'])
-            #bpy.ops.object.transform_apply(scale=True)
-            bpy.context.active_object.location[2] = bpy.context.scene['gx_cube_scale_z']
+            bpy.context.active_object.scale = (1, 1, 0.06)
+            bpy.ops.object.transform_apply(scale=True)
+            bpy.context.active_object.location[2] = 0.06
             bpy.context.scene.cursor_location = (-(i*bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space']/2), bpy.context.scene['gx_slash'] * i, 0)  
             bpy.ops.object.origin_set(type='ORIGIN_CURSOR') 
+            bpy.context.active_object.scale = (bpy.context.scene['gx_cube_scale_x'], bpy.context.scene['gx_cube_scale_y'], bpy.context.scene['gx_cube_scale_z'])
         elif bpy.context.scene['gx_type'] == 2:
+            bpy.context.active_object.scale = (1, 1, 0.06*2)
+            bpy.ops.object.transform_apply(scale=True)
             bpy.context.active_object.scale = (bpy.context.scene['gx_cube_scale_x'], bpy.context.scene['gx_cube_scale_y'], bpy.context.scene['gx_cube_scale_z']*2)
-            #bpy.ops.object.transform_apply(scale=True)
                 
         name = "bar_l_" + str(i+1)
         bpy.context.active_object.name = name
@@ -857,14 +843,16 @@ def generate_objects(i):
         if bpy.context.scene['gx_type'] == 0:
             bpy.context.active_object.scale = (bpy.context.scene['gx_scale_x'], bpy.context.scene['gx_scale_y'], bpy.context.scene['gx_scale_z'])
         elif bpy.context.scene['gx_type'] == 1:
-            bpy.context.active_object.scale = (bpy.context.scene['gx_cube_scale_x'], bpy.context.scene['gx_cube_scale_y'], bpy.context.scene['gx_cube_scale_z'])
-            #bpy.ops.object.transform_apply(scale=True)
-            bpy.context.active_object.location[2] = bpy.context.scene['gx_cube_scale_z']
+            bpy.context.active_object.scale = (1, 1, 0.06)
+            bpy.ops.object.transform_apply(scale=True)
+            bpy.context.active_object.location[2] = 0.06
             bpy.context.scene.cursor_location = (i*bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space']/2, bpy.context.scene['gx_slash'] * i, 0)
-            bpy.ops.object.origin_set(type='ORIGIN_CURSOR')             
+            bpy.ops.object.origin_set(type='ORIGIN_CURSOR')      
+            bpy.context.active_object.scale = (bpy.context.scene['gx_cube_scale_x'], bpy.context.scene['gx_cube_scale_y'], bpy.context.scene['gx_cube_scale_z'])       
         elif bpy.context.scene['gx_type'] == 2:
+            bpy.context.active_object.scale = (1, 1, 0.06*2)
+            bpy.ops.object.transform_apply(scale=True)
             bpy.context.active_object.scale = (bpy.context.scene['gx_cube_scale_x'], bpy.context.scene['gx_cube_scale_y'], bpy.context.scene['gx_cube_scale_z']*2)
-            #bpy.ops.object.transform_apply(scale=True)
 
         name = "bar_r_" + str(i+1)
         bpy.context.active_object.name = name
@@ -921,13 +909,13 @@ def register():
     bpy.utils.register_class(GxCreateBase)
     bpy.utils.register_class(GxInitVariables)
     bpy.utils.register_class(GxBake)    
-    bpy.utils.register_class(LayoutDemoPanel)
+    bpy.utils.register_class(GXAVPanel)
     initprop()
 def unregister():
     bpy.utils.unregister_class(GxCreateBase)
     bpy.utils.unregister_class(GxInitVariables)
     bpy.utils.unregister_class(GxBake)    
-    bpy.utils.unregister_class(LayoutDemoPanel)
+    bpy.utils.unregister_class(GXAVPanel)
 
 if __name__ == "__main__":
     register()

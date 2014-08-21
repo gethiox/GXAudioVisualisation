@@ -1,4 +1,10 @@
 GXAudioVisualisation (GxAV) - Generate Audio Visualization in Blender!
+User manual on the wiki - https://github.com/gethiox/GXAudioVisualisation/wiki
+
+#### 21.08.2014 - 1.0 STABLE \o/ ####
+- 'Tercja bake engine' has been fully implemented, many thanks to Xevaquor for tercja.py module!
+- again small gui improvements :v
+- that's all folks, patches are welcome
 
 #### 09.08.2014 - 0.99v RC4 ####
 - Gui improvements
