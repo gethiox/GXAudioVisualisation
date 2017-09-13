@@ -1,78 +1,9 @@
-"""
-GXAudioVisualisation - Blender Music Visualizer
-Copyright (C) 2013 Sławomir Kur (Gethiox)
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see http://www.gnu.org/licenses/
-"""
-
-bl_info = {
-    "name": "GxAV",
-    "author": "Sławomir Kur (Gethiox)",
-    "version": (1, 0),
-    "blender": (2, 7, 1),
-    "location": "Properties > Scene",
-    "description": "Bake Spectrum Visualizer by sound file",
-    "category": "Animation",
-    "wiki_url": "https://github.com/gethiox/GXAudioVisualisation/wiki",
-    "tracker_url": "https://github.com/gethiox/GXAudioVisualisation/issues"}
-
 import math
 
 import bpy
 
-# __author__ = "Xevaquor"
+from GxAV.app import tercja
 
-base = math.pow(2, (1. / 3))
-
-
-def compute(xarg):
-    """
-    Computes value of tercja function ignoring set bounds
-    :param xarg: x argument for func
-    :return: computed y value
-    """
-    return base ** xarg
-
-
-def compute_inverse(yarg):
-    """
-    Computes inverse of tercja
-    :param yarg: y argument for func
-    :return: corresponding x value
-    """
-    # non positive numbers are out of domain of log func
-    # we are silently ignoring it
-    if yarg <= 0:
-        return 0
-    return math.log(yarg, base)
-
-
-def get_value_from_x(xx, minimum_x, maximum_x):
-    """
-    Computes value from percentage in interval. For more details please see:
-    https://github.com/Xevaquor/GXAudioVisualisation/wiki/Tercja
-    Eg: .42 means 42%
-    :param xx: Percent in interval. Must be in range [0,1]
-    :param minimum_x: Lower x bound
-    :param maximum_x: Upper x bound
-    :return: corresponding value of Tercja func
-    """
-    assert (0 <= xx <= 1)
-    return compute(xx * (maximum_x - minimum_x) + minimum_x)
-
-
-# \__author__ = "Xevaquor"
 
 def initprop():
     bpy.types.Scene.gx_slash_rotate = bpy.props.BoolProperty(
@@ -459,8 +390,8 @@ def gxstart():
 
 def gxbake():
     ### calculate for tercja
-    tercja_x_min = compute_inverse(bpy.context.scene['gx_min_freq'])
-    tercja_x_max = compute_inverse(bpy.context.scene['gx_max_freq'])
+    tercja_x_min = tercja.compute_inverse(bpy.context.scene['gx_min_freq'])
+    tercja_x_max = tercja.compute_inverse(bpy.context.scene['gx_max_freq'])
     tercja_step = (1 / bpy.context.scene['gx_count_x'])
     ###
 
@@ -493,24 +424,24 @@ def gxbake():
     for i in range(bpy.context.scene['gx_count_x']):
         if bpy.context.scene['gx_mode'] == 2:
             a = b
-            b = get_value_from_x((i + 1) * tercja_step, tercja_x_min, tercja_x_max)
+            b = tercja.get_value_from_x((i + 1) * tercja_step, tercja_x_min, tercja_x_max)
         elif bpy.context.scene['gx_mode'] == 1:
             b = ((bpy.context.scene['gx_max_freq'] - bpy.context.scene['gx_min_freq']) - c * (
-            bpy.context.scene['gx_count_x'] - i - 1)) + bpy.context.scene['gx_min_freq']
+                bpy.context.scene['gx_count_x'] - i - 1)) + bpy.context.scene['gx_min_freq']
             a = ((bpy.context.scene['gx_max_freq'] - bpy.context.scene['gx_min_freq']) - c * (
-            bpy.context.scene['gx_count_x'] - i)) + bpy.context.scene['gx_min_freq']
+                bpy.context.scene['gx_count_x'] - i)) + bpy.context.scene['gx_min_freq']
         elif bpy.context.scene['gx_mode'] == 0:
             b = ((1 - math.log(bpy.context.scene['gx_count_x'] - i, bpy.context.scene['gx_count_x'] + 1)) * (
-            bpy.context.scene['gx_max_freq'] - bpy.context.scene['gx_min_freq'])) + bpy.context.scene['gx_min_freq']
+                bpy.context.scene['gx_max_freq'] - bpy.context.scene['gx_min_freq'])) + bpy.context.scene['gx_min_freq']
             a = ((1 - math.log(bpy.context.scene['gx_count_x'] - i + 1, bpy.context.scene['gx_count_x'] + 1)) * (
-            bpy.context.scene['gx_max_freq'] - bpy.context.scene['gx_min_freq'])) + bpy.context.scene['gx_min_freq']
+                bpy.context.scene['gx_max_freq'] - bpy.context.scene['gx_min_freq'])) + bpy.context.scene['gx_min_freq']
 
         print(str(i) + ": " + str(round(a, 1)) + " Hz - " + str(round(b, 1)) + " Hz")
         if bpy.context.scene['gx_channels'] == 1 or bpy.context.scene['gx_channels'] == 0:
             bpy.context.scene.frame_current = bpy.context.scene['gx_start']
             bpy.ops.object.add(location=(
-            -(i * bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space'] / 2),
-            bpy.context.scene['gx_slash'] * i, -2))
+                -(i * bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space'] / 2),
+                bpy.context.scene['gx_slash'] * i, -2))
             name = "obj_l_" + str(i + 1)
             bpy.context.active_object.name = name
 
@@ -536,8 +467,8 @@ def gxbake():
 
             if bpy.context.scene['gx_freq_debug'] == 1:
                 bpy.ops.object.add(location=(
-                -(i * bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space'] / 2),
-                bpy.context.scene['gx_slash'] * i, -4))
+                    -(i * bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space'] / 2),
+                    bpy.context.scene['gx_slash'] * i, -4))
                 name = (str(i) + ": " + str(round(a, 1)) + " Hz - " + str(round(b, 1)) + " Hz")
                 bpy.context.active_object.name = name
 
@@ -570,8 +501,8 @@ def gxbake():
 
             if bpy.context.scene['gx_freq_debug'] == 1:
                 bpy.ops.object.add(location=(
-                i * bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space'] / 2,
-                bpy.context.scene['gx_slash'] * i, -4))
+                    i * bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space'] / 2,
+                    bpy.context.scene['gx_slash'] * i, -4))
                 name = (str(i) + ": " + str(round(a, 1)) + " Hz - " + str(round(b, 1)) + " Hz")
                 bpy.context.active_object.name = name
 
@@ -787,9 +718,9 @@ def update_space_x(self, context):
         if bpy.context.scene['gx_channels'] == 1 or bpy.context.scene['gx_channels'] == 0:
             name = "bar_l_" + str(i + 1)
             bpy.data.objects[name].location[0] = -(
-            i * bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space'] / 2)
+                i * bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space'] / 2)
             if bpy.context.scene['gx_slash_rotate'] == True and (
-                bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_slash']) != 0:
+                        bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_slash']) != 0:
                 bpy.data.objects[name].rotation_euler[2] = -math.asin(bpy.context.scene['gx_slash'] / math.sqrt(
                     math.pow(bpy.context.scene['gx_space_x'], 2) + math.pow(bpy.context.scene['gx_slash'], 2)))
             else:
@@ -799,7 +730,7 @@ def update_space_x(self, context):
             bpy.data.objects[name].location[0] = i * bpy.context.scene['gx_space_x'] + bpy.context.scene[
                                                                                            'gx_center_space'] / 2
             if bpy.context.scene['gx_slash_rotate'] == True and (
-                bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_slash']) != 0:
+                        bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_slash']) != 0:
                 bpy.data.objects[name].rotation_euler[2] = math.asin(bpy.context.scene['gx_slash'] / math.sqrt(
                     math.pow(bpy.context.scene['gx_space_x'], 2) + math.pow(bpy.context.scene['gx_slash'], 2)))
             else:
@@ -810,7 +741,7 @@ def update_space_x(self, context):
             if bpy.context.scene['gx_channels'] == 1 or bpy.context.scene['gx_channels'] == 0:
                 name = "obj_l_" + str(i + 1)
                 bpy.data.objects[name].location[0] = -(
-                i * bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space'] / 2)
+                    i * bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space'] / 2)
             if bpy.context.scene['gx_channels'] == 2 or bpy.context.scene['gx_channels'] == 0:
                 name = "obj_r_" + str(i + 1)
                 bpy.data.objects[name].location[0] = i * bpy.context.scene['gx_space_x'] + bpy.context.scene[
@@ -825,31 +756,31 @@ def update_scale(self, context):
             name = "bar_l_" + str(i + 1)
             if bpy.context.scene['gx_type'] == 0:
                 bpy.data.objects[name].scale = (
-                bpy.context.scene['gx_scale_x'], bpy.context.scene['gx_scale_y'], bpy.context.scene['gx_scale_z'])
+                    bpy.context.scene['gx_scale_x'], bpy.context.scene['gx_scale_y'], bpy.context.scene['gx_scale_z'])
             elif bpy.context.scene['gx_type'] == 1:
                 bpy.data.objects[name].scale = (
-                bpy.context.scene['gx_cube_scale_x'], bpy.context.scene['gx_cube_scale_y'],
-                bpy.context.scene['gx_cube_scale_z'])
+                    bpy.context.scene['gx_cube_scale_x'], bpy.context.scene['gx_cube_scale_y'],
+                    bpy.context.scene['gx_cube_scale_z'])
                 # bpy.ops.object.transform_apply(scale=True)
             elif bpy.context.scene['gx_type'] == 2:
                 bpy.data.objects[name].scale = (
-                bpy.context.scene['gx_cube_scale_x'], bpy.context.scene['gx_cube_scale_y'],
-                bpy.context.scene['gx_cube_scale_z'] * 2)
+                    bpy.context.scene['gx_cube_scale_x'], bpy.context.scene['gx_cube_scale_y'],
+                    bpy.context.scene['gx_cube_scale_z'] * 2)
                 # bpy.ops.object.transform_apply(scale=True)
         if bpy.context.scene['gx_channels'] == 2 or bpy.context.scene['gx_channels'] == 0:
             name = "bar_r_" + str(i + 1)
             if bpy.context.scene['gx_type'] == 0:
                 bpy.data.objects[name].scale = (
-                bpy.context.scene['gx_scale_x'], bpy.context.scene['gx_scale_y'], bpy.context.scene['gx_scale_z'])
+                    bpy.context.scene['gx_scale_x'], bpy.context.scene['gx_scale_y'], bpy.context.scene['gx_scale_z'])
             elif bpy.context.scene['gx_type'] == 1:
                 bpy.data.objects[name].scale = (
-                bpy.context.scene['gx_cube_scale_x'], bpy.context.scene['gx_cube_scale_y'],
-                bpy.context.scene['gx_cube_scale_z'])
+                    bpy.context.scene['gx_cube_scale_x'], bpy.context.scene['gx_cube_scale_y'],
+                    bpy.context.scene['gx_cube_scale_z'])
                 # bpy.ops.object.transform_apply(scale=True)
             elif bpy.context.scene['gx_type'] == 2:
                 bpy.data.objects[name].scale = (
-                bpy.context.scene['gx_cube_scale_x'], bpy.context.scene['gx_cube_scale_y'],
-                bpy.context.scene['gx_cube_scale_z'] * 2)
+                    bpy.context.scene['gx_cube_scale_x'], bpy.context.scene['gx_cube_scale_y'],
+                    bpy.context.scene['gx_cube_scale_z'] * 2)
                 # bpy.ops.object.transform_apply(scale=True)
 
 
@@ -857,32 +788,32 @@ def generate_objects(i):
     gx_save = bpy.context.scene.cursor_location.copy()
     if bpy.context.scene['gx_channels'] == 1 or bpy.context.scene['gx_channels'] == 0:
         bpy.ops.mesh.primitive_cube_add(location=(
-        -(i * bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space'] / 2),
-        bpy.context.scene['gx_slash'] * i, 0))
+            -(i * bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space'] / 2),
+            bpy.context.scene['gx_slash'] * i, 0))
         if bpy.context.scene['gx_slash_rotate'] == True:
             bpy.context.active_object.rotation_euler[2] = -math.asin(bpy.context.scene['gx_slash'] / math.sqrt(
                 math.pow(bpy.context.scene['gx_space_x'], 2) + math.pow(bpy.context.scene['gx_slash'], 2)))
 
         if bpy.context.scene['gx_type'] == 0:
             bpy.context.active_object.scale = (
-            bpy.context.scene['gx_scale_x'], bpy.context.scene['gx_scale_y'], bpy.context.scene['gx_scale_z'])
+                bpy.context.scene['gx_scale_x'], bpy.context.scene['gx_scale_y'], bpy.context.scene['gx_scale_z'])
         elif bpy.context.scene['gx_type'] == 1:
             bpy.context.active_object.scale = (1, 1, 0.06)
             bpy.ops.object.transform_apply(scale=True)
             bpy.context.active_object.location[2] = 0.06
             bpy.context.scene.cursor_location = (
-            -(i * bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space'] / 2),
-            bpy.context.scene['gx_slash'] * i, 0)
+                -(i * bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space'] / 2),
+                bpy.context.scene['gx_slash'] * i, 0)
             bpy.ops.object.origin_set(type='ORIGIN_CURSOR')
             bpy.context.active_object.scale = (
-            bpy.context.scene['gx_cube_scale_x'], bpy.context.scene['gx_cube_scale_y'],
-            bpy.context.scene['gx_cube_scale_z'])
+                bpy.context.scene['gx_cube_scale_x'], bpy.context.scene['gx_cube_scale_y'],
+                bpy.context.scene['gx_cube_scale_z'])
         elif bpy.context.scene['gx_type'] == 2:
             bpy.context.active_object.scale = (1, 1, 0.06 * 2)
             bpy.ops.object.transform_apply(scale=True)
             bpy.context.active_object.scale = (
-            bpy.context.scene['gx_cube_scale_x'], bpy.context.scene['gx_cube_scale_y'],
-            bpy.context.scene['gx_cube_scale_z'] * 2)
+                bpy.context.scene['gx_cube_scale_x'], bpy.context.scene['gx_cube_scale_y'],
+                bpy.context.scene['gx_cube_scale_z'] * 2)
 
         name = "bar_l_" + str(i + 1)
         bpy.context.active_object.name = name
@@ -896,32 +827,32 @@ def generate_objects(i):
 
     if bpy.context.scene['gx_channels'] == 2 or bpy.context.scene['gx_channels'] == 0:
         bpy.ops.mesh.primitive_cube_add(location=(
-        i * bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space'] / 2,
-        bpy.context.scene['gx_slash'] * i, 0))
+            i * bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space'] / 2,
+            bpy.context.scene['gx_slash'] * i, 0))
         if bpy.context.scene['gx_slash_rotate'] == True:
             bpy.context.active_object.rotation_euler[2] = math.asin(bpy.context.scene['gx_slash'] / math.sqrt(
                 math.pow(bpy.context.scene['gx_space_x'], 2) + math.pow(bpy.context.scene['gx_slash'], 2)))
 
         if bpy.context.scene['gx_type'] == 0:
             bpy.context.active_object.scale = (
-            bpy.context.scene['gx_scale_x'], bpy.context.scene['gx_scale_y'], bpy.context.scene['gx_scale_z'])
+                bpy.context.scene['gx_scale_x'], bpy.context.scene['gx_scale_y'], bpy.context.scene['gx_scale_z'])
         elif bpy.context.scene['gx_type'] == 1:
             bpy.context.active_object.scale = (1, 1, 0.06)
             bpy.ops.object.transform_apply(scale=True)
             bpy.context.active_object.location[2] = 0.06
             bpy.context.scene.cursor_location = (
-            i * bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space'] / 2,
-            bpy.context.scene['gx_slash'] * i, 0)
+                i * bpy.context.scene['gx_space_x'] + bpy.context.scene['gx_center_space'] / 2,
+                bpy.context.scene['gx_slash'] * i, 0)
             bpy.ops.object.origin_set(type='ORIGIN_CURSOR')
             bpy.context.active_object.scale = (
-            bpy.context.scene['gx_cube_scale_x'], bpy.context.scene['gx_cube_scale_y'],
-            bpy.context.scene['gx_cube_scale_z'])
+                bpy.context.scene['gx_cube_scale_x'], bpy.context.scene['gx_cube_scale_y'],
+                bpy.context.scene['gx_cube_scale_z'])
         elif bpy.context.scene['gx_type'] == 2:
             bpy.context.active_object.scale = (1, 1, 0.06 * 2)
             bpy.ops.object.transform_apply(scale=True)
             bpy.context.active_object.scale = (
-            bpy.context.scene['gx_cube_scale_x'], bpy.context.scene['gx_cube_scale_y'],
-            bpy.context.scene['gx_cube_scale_z'] * 2)
+                bpy.context.scene['gx_cube_scale_x'], bpy.context.scene['gx_cube_scale_y'],
+                bpy.context.scene['gx_cube_scale_z'] * 2)
 
         name = "bar_r_" + str(i + 1)
         bpy.context.active_object.name = name
@@ -977,6 +908,10 @@ def update_count(self, context):
         False
 
 
+# if __name__ == "__main__":
+#     register()
+
+
 def register():
     bpy.utils.register_class(GxCreateBase)
     bpy.utils.register_class(GxInitVariables)
@@ -990,7 +925,3 @@ def unregister():
     bpy.utils.unregister_class(GxInitVariables)
     bpy.utils.unregister_class(GxBake)
     bpy.utils.unregister_class(GXAVPanel)
-
-
-if __name__ == "__main__":
-    register()
