@@ -18,6 +18,9 @@ Also you can see promotion video:
 - [ ] Independed (and better) bake algorithm of internal bake function
 - [ ] [Peak feature](http://youtu.be/ZOYp0FfVE4Q)
 
+## How to build:
+Just zip `GxAV` folder and your addon is ready to instal inside Blender.  
+You can also run `./tools/build.sh` under Linux.
 
 ### Changelog
 #### 21.08.2014 - 1.0 STABLE \o/ ####
