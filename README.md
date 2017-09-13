@@ -2,7 +2,7 @@
 Generate Audio Visualization in Blender!  
 Check user guide on the [wiki page](https://github.com/gethiox/GXAudioVisualisation/wiki).
 
-Also you can see promotion video:
+Also you can see promotion video:  
 [![GxAV youtube video](https://img.youtube.com/vi/cXTEqtcLDKU/0.jpg)](https://youtu.be/cXTEqtcLDKU)
 
 ## TODO:
