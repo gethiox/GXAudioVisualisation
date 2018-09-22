@@ -19,20 +19,27 @@ along with this program.  If not, see http://www.gnu.org/licenses/
 bl_info = {
     "name": "GxAV",
     "author": "Sławomir Kur (Gethiox)",
-    "version": (1, 0),
-    "blender": (2, 7, 1),
+    "version": (1, 0, 0),
+    "blender": (2, 79, 0),
     "location": "Properties > Scene",
     "description": "Bake Spectrum Visualizer by sound file",
     "category": "Animation",
-    "wiki_url": "https://github.com/gethiox/GXAudioVisualisation/wiki",
-    "tracker_url": "https://github.com/gethiox/GXAudioVisualisation/issues"}
+    # "wiki_url": "https://github.com/gethiox/GXAudioVisualisation/wiki",
+    "tracker_url": "https://github.com/gethiox/GXAudioVisualisation/issues"
+}
 
-from GxAV import gxav
+import bpy
+
+from GxAV import manager
 
 
 def register():
-    gxav.register()
+    print('>>> Registering GxAV')
+    manager.register()
+
 
 
 def unregister():
-    gxav.unregister()
+    print('>>> Unregistering GxAV')
+    manager.unregister()
+
