@@ -1,28 +1,25 @@
 import json
-from collections import OrderedDict
 from typing import List, Optional, Dict
 
 import bpy
 
-from GxAV.gxav import Visualization
+from GxAV import gxav
 
 ID = int
-ScenePointer = int
 
-scene_vizualizations: Dict[ScenePointer, List[Visualization]] = {}
-scene_vizualizations = {}
 
 class GxAVProperties(bpy.types.PropertyGroup):
     # keeps configuration in json format
     configuration = bpy.props.StringProperty()
 
     @property
-    def visualizations(self) -> Optional[List[ID]]:
+    def visualizations(self) -> List[ID]:
         if self.configuration:
             try:
                 return json.loads(self.configuration)['vizualizations']
             except KeyError:
-                return None
+                return []
+        return []
 
     @visualizations.setter
     def visualizations(self, value):
@@ -35,31 +32,6 @@ class GxAVProperties(bpy.types.PropertyGroup):
         self.configuration = json.dumps(configuration)
 
 
-def init():
-    global scene_vizualizations
-    for scene in bpy.data.scenes:
-        try:
-            getattr(scene, 'gxav')
-        except:
-            print('>>> Nothing to load')
-        else:
-            for idx in bpy.context.scene.gxav.visualizations:
-                print('>>> recreating existing visualizers')
-                scene_vizualizations[scene.as_pointer()] = Visualization(id=idx)
-
-
-# try:
-#     vizualizations = bpy.types.Scene.gxav.state
-#     print('>>> addon data already exist')
-# except AttributeError:
-#     print('>>> initializating addon data')
-#     bpy.types.Scene.gxav_vizualizations = OrderedDict()
-#     vizualizations = bpy.types.Scene.gxav_vizualizations
-
-to_remove: ID = -1
-
-initializated = False
-
 
 class Panel(bpy.types.Panel):
     """Creates a Panel in the scene context of the properties editor"""
@@ -69,21 +41,13 @@ class Panel(bpy.types.Panel):
     bl_region_type = 'WINDOW'
     bl_context = "scene"
 
-
     def draw(self, context):
-        global initializated
-        if not initializated:
-            init()
-            initializated = True
-
         layout = self.layout
         row = layout.row()
         row.operator("object.add_visualization", icon="ZOOMIN")
 
-        for scene_pointer, visuzalizations in scene_vizualizations.items():
-            if scene_pointer == context.scene.as_pointer():
-                for viz in visuzalizations:
-                    viz.draw(context, self)
+        for vis_id in context.scene.gxav.visualizations:
+            gxav.draw(self, vis_id)
 
 
 class AddVisualization(bpy.types.Operator):
@@ -92,29 +56,26 @@ class AddVisualization(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
-        viz_id = self._get_available_id(context)
-        viz = Visualization(id=viz_id)
-        try:
-            scene_vizualizations[context.scene.as_pointer()].append(viz)
-        except KeyError:
-            scene_vizualizations[context.scene.as_pointer()] = [viz]
-
-        print(f'>>> Visualization "{viz_id}" added!')
+        idv = self._get_available_id(context)
+        current_visualizations = context.scene.gxav.visualizations
+        current_visualizations.append(idv)
+        context.scene.gxav.visualizations = current_visualizations
+        gxav.create(idv)
+        print(f'>>> Visualization "{idv}" added!')
         return {'FINISHED'}
 
     def _get_available_id(self, context) -> ID:
-        try:
-            visualizations = scene_vizualizations[context.scene.as_pointer()]
-        except KeyError:
-            visualizations = []
+        """
+        Returns first free/available ID for visualization instance  on current scene
+        """
 
-        current_ids = [viz.id for viz in visualizations]
+        current_ids = [idv for idv in context.scene.gxav.visualizations]
 
-        idx = 0
+        idv = 0
         while True:
-            if idx not in current_ids:
-                return idx
-            idx += 1
+            if idv not in current_ids:
+                return idv
+            idv += 1
 
 
 class RemoveVisualization(bpy.types.Operator):
@@ -122,14 +83,18 @@ class RemoveVisualization(bpy.types.Operator):
     bl_label = "Remove Visualization"
     bl_options = {'UNDO'}
 
-    idx = bpy.props.IntProperty(name="vizualization idx to remove", default=-1)
+    idv = bpy.props.IntProperty(name="vizualization idx to remove", default=-1)
 
     def execute(self, context):
-        vis = scene_vizualizations[context.scene.as_pointer()].pop(self.idx)
-        vis.clean_up()
-        del vis
-        print(f'>>> Visualization {self.idx} removed!')
+        current_visualizations = context.scene.gxav.visualizations
+        current_visualizations.remove(self.idv)
+        context.scene.gxav.visualizations = current_visualizations
+        gxav.remove(self.idv)
+        print(f'>>> Visualization {self.idv} removed!')
         return {'FINISHED'}
+
+    def invoke(self, context, event):
+        return context.window_manager.invoke_confirm(self, event)
 
 
 def register():
@@ -138,12 +103,12 @@ def register():
     bpy.utils.register_class(AddVisualization)
     bpy.utils.register_class(RemoveVisualization)
 
-    # bpy.types.Scene.gxav = bpy.props.PointerProperty(type=GxAVProperties)
-    # for idx in bpy.context.scene.gxav.visualizations:
-    #     viz = Visualization(id=idx)
-    #     vizualizations[idx] = viz
-    #     print(f'>>> Visualization "{idx}" added!')
-    #     print(f'>>> visualizations: {vizualizations}')
+    try:
+        getattr(bpy.types.Scene, 'gxav')
+        print('>>> data already existing')
+    except AttributeError:
+        bpy.types.Scene.gxav = bpy.props.PointerProperty(type=GxAVProperties)
+        print('>>> new data created')
 
 
 def unregister():

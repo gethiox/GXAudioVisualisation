@@ -28,8 +28,6 @@ bl_info = {
     "tracker_url": "https://github.com/gethiox/GXAudioVisualisation/issues"
 }
 
-import bpy
-
 from GxAV import manager
 
 
