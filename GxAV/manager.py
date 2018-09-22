@@ -1,5 +1,5 @@
 import json
-from typing import List, Optional, Dict
+from typing import List
 
 import bpy
 
@@ -32,9 +32,10 @@ class GxAVProperties(bpy.types.PropertyGroup):
         self.configuration = json.dumps(configuration)
 
 
-
 class Panel(bpy.types.Panel):
-    """Creates a Panel in the scene context of the properties editor"""
+    """
+    Creates a Panel in the scene context of the properties editor
+    """
     bl_label = "GXAudioVisualisation"
     bl_idname = "SCENE_PT_layout"
     bl_space_type = 'PROPERTIES'
@@ -61,12 +62,13 @@ class AddVisualization(bpy.types.Operator):
         current_visualizations.append(idv)
         context.scene.gxav.visualizations = current_visualizations
         gxav.create(idv)
+        gxav.set_default_values(idv)
         print(f'>>> Visualization "{idv}" added!')
         return {'FINISHED'}
 
     def _get_available_id(self, context) -> ID:
         """
-        Returns first free/available ID for visualization instance  on current scene
+        Returns first free/available ID for visualization instance on current scene
         """
 
         current_ids = [idv for idv in context.scene.gxav.visualizations]

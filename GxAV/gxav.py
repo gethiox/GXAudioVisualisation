@@ -1,8 +1,6 @@
 import bpy
 
 
-
-
 def draw(panel, idv):
     context = bpy.context
     layout = panel.layout
@@ -35,6 +33,18 @@ def _prop(idv: int, x: str):
     return getattr(bpy.context.scene, _prop_name(idv, x))
 
 
+def set_default_values(idv):
+    setattr(
+        bpy.context.scene, _prop_name(idv, 'center_space'), 2.0
+    )
+    setattr(
+        bpy.context.scene, _prop_name(idv, 'hide'), True
+    )
+    setattr(
+        bpy.context.scene, _prop_name(idv, 'name'), f'Visualization #{idv}'
+    )
+
+
 def create(idv):
     setattr(
         bpy.types.Scene, _prop_name(idv, 'center_space'),
@@ -62,19 +72,6 @@ def create(idv):
         bpy.types.Scene, _prop_name(idv, 'object'),
         bpy.props.PointerProperty(name="My Pointer", type=bpy.types.Object)
     )
-
-    # set default values
-    setattr(
-        bpy.context.scene, _prop_name(idv, 'center_space'), 2.0
-    )
-    setattr(
-        bpy.context.scene, _prop_name(idv, 'hide'), True
-    )
-    setattr(
-        bpy.context.scene, _prop_name(idv, 'name'), f'Visualization #{idv}'
-    )
-
-
 
 
 def remove(idv):
